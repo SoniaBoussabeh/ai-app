@@ -93,6 +93,39 @@ pipeline:
                       - name: APP_VERSION
                       - name: IMAGE_TAG
 
+              # PR builds only: every PR must raise VERSION above main's, otherwise
+              # the release would reuse an existing image tag. Fails the PR check, so
+              # with branch protection the PR cannot be merged until VERSION is bumped.
+              - step:
+                  type: Run
+                  name: Check Version Bump
+                  identifier: Check_Version_Bump
+                  when:
+                    stageStatus: Success
+                    condition: <+pipeline.variables.isRelease> == "false"
+                  spec:
+                    connectorRef: account.dockerio
+                    image: alpine:latest
+                    shell: Sh
+                    envVariables:
+                      GITHUB_TOKEN: <+secrets.getValue("account.github_token")>
+                    command: |-
+                      set -eu
+                      apk add --no-cache curl >/dev/null
+                      NEW=<+execution.steps.Read_Version.output.outputVariables.APP_VERSION>
+                      OLD=$(curl -sSf -H "Authorization: Bearer $GITHUB_TOKEN" -H "Accept: application/vnd.github.raw" \
+                        "https://api.github.com/repos/SoniaBoussabeh/ai-app/contents/VERSION?ref=main" | tr -d ' \t\r\n')
+                      echo "VERSION on main: $OLD   in this PR: $NEW"
+                      # numeric MAJOR.MINOR.PATCH comparison (busybox has no sort -V)
+                      HIGHER=$(awk -v a="$OLD" -v b="$NEW" 'BEGIN { split(a, x, "."); split(b, y, ".");
+                        for (i = 1; i <= 3; i++) { if (y[i] + 0 > x[i] + 0) { print "yes"; exit }
+                                                   if (y[i] + 0 < x[i] + 0) { print "no"; exit } }
+                        print "no" }')
+                      if [ "$HIGHER" != "yes" ]; then
+                        echo "ERROR: bump VERSION above $OLD in this PR (e.g. patch: increase the last number)."
+                        exit 1
+                      fi
+
               # <-- KOSLI: create/update the flow from the versioned template, then
               # open a trail for this commit. `create flow` is idempotent, so the
               # template in git stays the single source of truth.
@@ -163,7 +196,11 @@ pipeline:
                         --commit "$SHA" \
                         --commit-url "https://github.com/SoniaBoussabeh/ai-app/commit/${SHA}" \
                         --build-url "<+pipeline.executionUrl>" \
-                        --repo-root /harness/test
+                        --repo-root /harness/test \
+                        --repo-provider github \
+                        --repository "SoniaBoussabeh/ai-app" \
+                        --repo-url "https://github.com/SoniaBoussabeh/ai-app" \
+                        --repo-id "<+pipeline.variables.githubRepoId>"
 
               # <-- KOSLI: the only step that calls the GitHub API. Satisfies the
               # `pull-request` attestation in flow-template.yml.
