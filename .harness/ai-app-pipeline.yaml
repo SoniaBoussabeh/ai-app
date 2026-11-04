@@ -41,7 +41,7 @@ pipeline:
                     build:
                       type: branch
                       spec:
-                        branch: main
+                        branch: <+pipeline.variables.gitBranch>
 
               # <-- KOSLI: install the CLI into the shared /harness volume and
               # capture the commit SHA. Needed because cloneCodebase is false, so
@@ -80,9 +80,18 @@ pipeline:
                     shell: Sh
                     command: |-
                       export APP_VERSION=$(tr -d ' \t\r\n' < /harness/test/VERSION)
-                      echo "App version: $APP_VERSION"
+                      SHA=<+execution.steps.Kosli_Setup.output.outputVariables.COMMIT_SHA>
+                      # Release builds (main) are tagged VERSION; PR builds VERSION-<sha7>,
+                      # so a feature branch can never overwrite a released tag.
+                      if [ "<+pipeline.variables.isRelease>" = "true" ]; then
+                        export IMAGE_TAG="$APP_VERSION"
+                      else
+                        export IMAGE_TAG="$APP_VERSION-$(echo "$SHA" | cut -c1-7)"
+                      fi
+                      echo "App version: $APP_VERSION  image tag: $IMAGE_TAG"
                     outputVariables:
                       - name: APP_VERSION
+                      - name: IMAGE_TAG
 
               # <-- KOSLI: create/update the flow from the versioned template, then
               # open a trail for this commit. `create flow` is idempotent, so the
@@ -122,8 +131,7 @@ pipeline:
                     connectorRef: account.dockerio
                     repo: soniabou/ai-app
                     tags:
-                      - <+execution.steps.Read_Version.output.outputVariables.APP_VERSION>
-                      - latest
+                      - <+execution.steps.Read_Version.output.outputVariables.IMAGE_TAG>
                     buildArgs:
                       APP_VERSION: <+execution.steps.Read_Version.output.outputVariables.APP_VERSION>
                     context: /harness/test
@@ -147,7 +155,7 @@ pipeline:
                     command: |-
                       set -eu
                       SHA=<+execution.steps.Kosli_Setup.output.outputVariables.COMMIT_SHA>
-                      VER=<+execution.steps.Read_Version.output.outputVariables.APP_VERSION>
+                      VER=<+execution.steps.Read_Version.output.outputVariables.IMAGE_TAG>
                       /harness/bin/kosli attest artifact "docker.io/soniabou/ai-app:${VER}" \
                         --artifact-type oci \
                         --name ai-app \
@@ -163,6 +171,11 @@ pipeline:
               - step:
                   type: Run
                   name: Kosli Attest Pull Request
+                  # Release builds only: on a PR build the review has not happened yet,
+                  # so the verdict would always be "not approved".
+                  when:
+                    stageStatus: Success
+                    condition: <+pipeline.variables.isRelease> == "true"
                   identifier: Kosli_Attest_PullRequest
                   spec:
                     connectorRef: account.dockerio
@@ -208,6 +221,11 @@ pipeline:
               - step:
                   type: Run
                   name: Kosli Attest Decision RCTL-043-test
+                  # Release builds only: on a PR build the review has not happened yet,
+                  # so the verdict would always be "not approved".
+                  when:
+                    stageStatus: Success
+                    condition: <+pipeline.variables.isRelease> == "true"
                   identifier: Kosli_Attest_Decision_RCTL043
                   spec:
                     connectorRef: account.dockerio
@@ -305,10 +323,10 @@ pipeline:
                         --repo-id "<+pipeline.variables.githubRepoId>" \
                         --origin-url "<+pipeline.executionUrl>"
 
-              # <-- KOSLI: the commit must reference an existing Jira issue in
-              # project SCRUM (e.g. "SCRUM-12: add status page"). Kosli reads the
-              # key from the commit message; the clone is branch main, so the
-              # branch name never carries one.
+              # <-- KOSLI: the change must reference an existing Jira issue in
+              # project SCRUM. Kosli reads the key from the branch name on PR builds
+              # (SCRUM-12-add-status-page) and from the commit message on main
+              # (GitHub's merge/squash message carries the branch name or PR title).
               # Reports only. Add --assert to FAIL the build when no valid issue
               # is referenced.
               - step:
@@ -333,7 +351,6 @@ pipeline:
                         --jira-username "<+pipeline.variables.jiraUsername>" \
                         --jira-api-token "$JIRA_API_TOKEN" \
                         --jira-project-key SCRUM \
-                        --ignore-branch-match \
                         --trail "$SHA" \
                         --commit "$SHA" \
                         --repo-root /harness/test \
@@ -385,7 +402,7 @@ pipeline:
                     build:
                       type: branch
                       spec:
-                        branch: main
+                        branch: <+pipeline.variables.gitBranch>
 
               # Runs the image Build pushed. Steps of a Kubernetes CI stage share
               # one pod, so the tests reach it on 127.0.0.1:8080. No `command`, so
@@ -397,7 +414,7 @@ pipeline:
                   identifier: App_Under_Test
                   spec:
                     connectorRef: account.dockerio
-                    image: soniabou/ai-app:<+pipeline.stages.Build.spec.execution.steps.Read_Version.output.outputVariables.APP_VERSION>
+                    image: soniabou/ai-app:<+pipeline.stages.Build.spec.execution.steps.Read_Version.output.outputVariables.IMAGE_TAG>
                     imagePullPolicy: Always
 
               # Smoke tests written as JUnit XML. `reports` makes Harness show them
@@ -510,6 +527,10 @@ pipeline:
         name: Deploy
         identifier: Deploy
         type: Deployment
+        # PR builds stop after Test: only a merged change on main is deployed.
+        when:
+          pipelineStatus: Success
+          condition: <+pipeline.variables.isRelease> == "true"
         spec:
           deploymentType: Kubernetes
           service:
@@ -524,7 +545,7 @@ pipeline:
                         - identifier: dockerimage
                           type: DockerRegistry
                           spec:
-                            tag: <+pipeline.stages.Build.spec.execution.steps.Read_Version.output.outputVariables.APP_VERSION>
+                            tag: <+pipeline.stages.Build.spec.execution.steps.Read_Version.output.outputVariables.IMAGE_TAG>
           environment:
             environmentRef: prod_Env
             deployToAll: false
@@ -569,6 +590,14 @@ pipeline:
   allowStageExecutions: true
   tags: {}
   variables:
+    # Set by the triggers: PR trigger -> <+trigger.sourceBranch> / "false",
+    # push-to-main trigger -> main / "true".
+    - name: gitBranch
+      type: String
+      value: <+input>.default(main)
+    - name: isRelease
+      type: String
+      value: <+input>.default(true).allowedValues(true,false)
     - name: githubRepoId
       type: String
       value: "1445561751"

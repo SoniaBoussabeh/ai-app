@@ -81,11 +81,40 @@ Import in this order. Each uses connector `account.githubsonia`, repo `ai-app`, 
 
 From then on: change code or pipeline → commit → push. Nothing is pasted into Harness.
 
-## Jira link (Kosli `jira-ticket` attestation)
+## Change workflow: one Jira ticket = one branch = one PR
 
-Every commit on main should mention an issue of project **SCRUM** on
-https://dhw-app.atlassian.net, e.g. `SCRUM-12: add status page`. The pipeline's Kosli Attest
-Jira step records whether it does; add `--assert` there to make it block the build.
+```
+Jira SCRUM-12 ─► branch SCRUM-12-add-status-page ─► PR to main ─► review/approve ─► merge
+                         │                              │                            │
+                         └── PR trigger ────────────────┘                            └── push trigger
+                             Build + Test only (isRelease=false)                         Build + Test + Deploy (isRelease=true)
+                             image VERSION-<sha7>                                        image VERSION
+                             Kosli: artifact, jira-ticket, smoke-tests                   Kosli: + pull-request, RCTL-043 decision
+```
+
+```powershell
+git switch -c SCRUM-12-add-status-page
+# ...change code, bump VERSION...
+git commit -am "SCRUM-12: add status page"
+git push -u origin SCRUM-12-add-status-page
+gh pr create --title "SCRUM-12: add status page" --fill
+```
+
+Keep the ticket key in the **branch name** and the **PR title**: Kosli's `jira-ticket` attestation
+reads it from the branch on PR builds and from the merge/squash commit message on main.
+
+### Harness triggers (Pipeline → Triggers → + New Trigger → GitHub)
+
+| Trigger | Event | Condition | Pipeline inputs |
+|---|---|---|---|
+| `ai-app-pr` | Pull Request: Open, Reopen, Edit, Synchronize | target branch `main` | `gitBranch` = `<+trigger.sourceBranch>`, `isRelease` = `false` |
+| `ai-app-main` | Push | branch `main` | `gitBranch` = `main`, `isRelease` = `true` |
+
+### GitHub branch protection (Settings → Branches → Add rule for `main`)
+
+Require a pull request, 1 approval, and the Harness PR check to pass. Without it, a direct
+push to main still deploys; Kosli then records it as non-compliant (RCTL-043), but does not
+stop it.
 
 ## Release
 
