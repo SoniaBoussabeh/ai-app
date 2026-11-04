@@ -1,0 +1,6 @@
+_schema: https://docs.kosli.com/schemas/policy/v1
+# Smoke tests ran against the exact image and passed (Harness Test stage).
+artifacts:
+  attestations:
+    - name: smoke-tests
+      type: junit

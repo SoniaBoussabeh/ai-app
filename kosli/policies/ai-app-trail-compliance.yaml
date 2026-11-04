@@ -1,0 +1,5 @@
+_schema: https://docs.kosli.com/schemas/policy/v1
+# Everything in kosli/flow-template.yml was attested and compliant on the artifact's trail.
+artifacts:
+  trail-compliance:
+    required: true

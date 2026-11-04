@@ -1,0 +1,7 @@
+_schema: https://docs.kosli.com/schemas/policy/v1
+# A second developer approved the PR: compliant decision for control RCTL-043-test,
+# recorded by the pipeline step "Kosli Attest Decision RCTL-043-test".
+artifacts:
+  attestations:
+    - type: decision
+      for_control: RCTL-043-test

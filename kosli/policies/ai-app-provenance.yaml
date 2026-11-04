@@ -1,0 +1,6 @@
+_schema: https://docs.kosli.com/schemas/policy/v1
+# Every artifact running in ai-app-prod was built and attested by the ai-app pipeline.
+# Catches anything that reached the cluster outside Harness (kubectl set image, retagged image).
+artifacts:
+  provenance:
+    required: true

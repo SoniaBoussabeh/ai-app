@@ -1,0 +1,6 @@
+_schema: https://docs.kosli.com/schemas/policy/v1
+# The running commit reached main through a GitHub pull request.
+artifacts:
+  attestations:
+    - name: pull-request
+      type: pull_request

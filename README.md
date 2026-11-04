@@ -16,7 +16,7 @@ GitHub (push to main) ──webhook──► Harness pipeline aiapp (YAML read f
 | Docker image | `docker.io/soniabou/ai-app:<VERSION>` |
 | Harness pipeline / service / infra | `aiapp` / `aiapp` / `aiappinfra` (project `foodtrucksre`, env `prod_Env`) |
 | k8s namespace | `ai-app` |
-| Kosli flow / environment / policy | `ai-app` / `ai-app-prod` / `ai-app-policy` |
+| Kosli flow / environment / policies | `ai-app` / `ai-app-prod` / `ai-app-*` (see §2) |
 
 ## One-time setup
 
@@ -34,17 +34,20 @@ this new repo (check the token's repository access if it is a fine-grained token
 
 ### 2. Kosli
 
-No local CLI needed: run it in Docker with the Member token (same pattern as simpleapp's
-KOSLI-SETUP.md §3). `--tmpfs /tmp` is mandatory, the image has no `/tmp`.
+One policy per concern, each attached to `ai-app-prod` (files in `kosli/policies/`):
+
+| Policy | Requires | Control |
+|---|---|---|
+| `ai-app-provenance` | artifact built and attested by the pipeline | binary provenance |
+| `ai-app-pull-request` | `pull-request` attestation | change via PR |
+| `ai-app-code-review` | compliant decision for `RCTL-043-test` | source code review |
+| `ai-app-smoke-tests` | `smoke-tests` JUnit attestation | quality assurance |
+| `ai-app-jira` | `jira-ticket` attestation | change linked to a ticket |
+| `ai-app-trail-compliance` | everything in `kosli/flow-template.yml` | — |
 
 ```powershell
-$env:KOSLI_ORG = "SDL-Sandbox"
-$env:KOSLI_API_TOKEN = (Get-Content "$env:USERPROFILE\.kosli-member-token" -Raw).Trim()
-function kosli { docker run --rm --tmpfs /tmp -e KOSLI_API_TOKEN -e KOSLI_ORG -v "${PWD}:/src" -w /src ghcr.io/kosli-dev/cli:v2.34.0 @args }
-
-kosli create environment ai-app-prod --type K8S --description "ai-app production namespace"
-kosli create policy ai-app-policy kosli/policy-ai-app.yaml --description "ai-app runtime requirements" --type env
-kosli attach-policy ai-app-policy --environment ai-app-prod
+.koslipply-policies.ps1        # phase 1: creates ai-app-prod + provenance policy
+.koslipply-policies.ps1 -All   # after the first PR-based release is green
 ```
 
 The flow `ai-app` is created by the pipeline itself (`kosli create flow` in Kosli Begin Trail).
