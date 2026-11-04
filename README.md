@@ -3,7 +3,7 @@
 Static nginx app, built and deployed by Harness, with Kosli compliance tracking.
 
 ```
-GitHub (push to main) ──webhook──► Harness pipeline ai_app (YAML read from .harness/)
+GitHub (push to main) ──webhook──► Harness pipeline aiapp (YAML read from .harness/)
                                      Build → Kosli attest → Test → Deploy
                                                                   │
                          EKS namespace ai-app ◄───────────────────┘
@@ -14,7 +14,7 @@ GitHub (push to main) ──webhook──► Harness pipeline ai_app (YAML read 
 |---|---|
 | GitHub repo | `SoniaBoussabeh/ai-app` |
 | Docker image | `docker.io/soniabou/ai-app:<VERSION>` |
-| Harness pipeline / service / infra | `ai_app` / `aiapp` / `aiappinfra` (project `foodtrucksre`, env `prod_Env`) |
+| Harness pipeline / service / infra | `aiapp` / `aiapp` / `aiappinfra` (project `foodtrucksre`, env `prod_Env`) |
 | k8s namespace | `ai-app` |
 | Kosli flow / environment / policy | `ai-app` / `ai-app-prod` / `ai-app-policy` |
 
@@ -71,7 +71,7 @@ Import in this order. Each uses connector `account.githubsonia`, repo `ai-app`, 
 
 1. **Service:** Services → New Service → Import from Git → `.harness/orgs/default/projects/foodtrucksre/services/aiapp.yaml`
 2. **Infrastructure:** Environments → `prod_Env` → Infrastructure Definitions → Import from Git → `.harness/orgs/default/projects/foodtrucksre/envs/production/prod_Env/infras/aiappinfra.yaml`
-3. **Pipeline:** Pipelines → Create → Import from Git → `.harness/ai-app-pipeline.yaml`
+3. **Pipeline:** Pipelines → Create → Import from Git → `.harness/orgs/default/projects/foodtrucksre/pipelines/aiapp.yaml`
 4. **Jira secret:** create an Atlassian API token for the user in pipeline variable `jiraUsername`
    (https://id.atlassian.com/manage-profile/security/api-tokens) and store it as account-level
    secret `account.jira_api_token` (Project/Account Settings → Secrets → New Secret → Text).
