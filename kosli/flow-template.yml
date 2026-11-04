@@ -15,6 +15,16 @@ trail:
     # `--name` on `kosli attest jira` must match this entry exactly.
     - name: jira-ticket
       type: jira
+    # SCRUM-2: static check, image scan, SBOM, load test. Each `--name` in the
+    # pipeline must match the entry here exactly.
+    - name: html-lint
+      type: junit
+    - name: vulnerability-scan
+      type: generic
+    - name: sbom
+      type: generic
+    - name: load-test
+      type: junit
   artifacts:
     # Required. `kosli attest artifact --name ai-app` is a REFERENCE to this
     # entry — remove it and the digest is never bound to the trail.

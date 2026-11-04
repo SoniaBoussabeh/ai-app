@@ -1,0 +1,6 @@
+_schema: https://docs.kosli.com/schemas/policy/v1
+# A CycloneDX SBOM (Syft) is recorded for the running image.
+artifacts:
+  attestations:
+    - name: sbom
+      type: generic
