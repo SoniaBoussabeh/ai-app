@@ -1,0 +1,5 @@
+service:
+  name: ai-app
+  identifier: aiapp
+  orgIdentifier: default
+  projectIdentifier: foodtrucksre
