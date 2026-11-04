@@ -69,7 +69,7 @@ cd C:\Users\lenovo\Desktop\App-test
 
 Import in this order. Each uses connector `account.githubsonia`, repo `ai-app`, branch `main`:
 
-1. **Service:** Services → New Service → Import from Git → `.harness/service-ai-app.yaml`
+1. **Service:** Services → New Service → Import from Git → `.harness/orgs/default/projects/foodtrucksre/services/aiapp.yaml`
 2. **Infrastructure:** Environments → `prod_Env` → Infrastructure Definitions → Import from Git → `.harness/infra-ai-app.yaml`
 3. **Pipeline:** Pipelines → Create → Import from Git → `.harness/ai-app-pipeline.yaml`
 4. **Jira secret:** create an Atlassian API token for the user in pipeline variable `jiraUsername`
