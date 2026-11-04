@@ -1,8 +1,8 @@
-# Creates (or versions) the ai-app environment policies and attaches them to ai-app-prod.
+# Creates (or versions) all ai-app environment policies and attaches them to ai-app-prod.
 # Requires Docker Desktop and a Kosli Member token in $env:USERPROFILE\.kosli-member-token.
 #
-#   .\kosli\apply-policies.ps1                      # provenance only (phase 1)
-#   .\kosli\apply-policies.ps1 -All                 # all six policies (after the first PR-based release)
+#   .\kosli\apply-policies.ps1                      # create all six, attach provenance only (phase 1)
+#   .\kosli\apply-policies.ps1 -All                 # create and attach all six (after the first PR-based release)
 #   .\kosli\apply-policies.ps1 -All -Comment "why"  # record why a policy changed (policies are versioned)
 param([switch]$All, [string]$Comment = "")
 
@@ -26,13 +26,14 @@ $policies = [ordered]@{
   "ai-app-jira"             = "Change linked to a Jira SCRUM issue"
   "ai-app-trail-compliance" = "Trail satisfies kosli/flow-template.yml"
 }
-if (-not $All) { $policies = [ordered]@{ "ai-app-provenance" = $policies["ai-app-provenance"] } }
-
 foreach ($name in $policies.Keys) {
+  # Always created, so Kosli validates every file (e.g. an unknown control) up front.
   $create = @("create", "policy", $name, "kosli/policies/$name.yaml", "--description", $policies[$name], "--type", "env")
   if ($Comment) { $create += @("--comment", $Comment) }
   kosli @create
-  # Re-attaching an already attached policy is harmless; do not stop the loop on it.
-  try { kosli attach-policy $name --environment $envName } catch { Write-Warning $_ }
+  if ($All -or $name -eq "ai-app-provenance") {
+    # Re-attaching an already attached policy is harmless; do not stop the loop on it.
+    try { kosli attach-policy $name --environment $envName } catch { Write-Warning $_ }
+  }
 }
 kosli get environment $envName
