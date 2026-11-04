@@ -97,6 +97,31 @@ pipeline:
                     outputVariables:
                       - name: COMMIT_SHA
 
+              # PR builds report to GitHub as commit status `harness/ai-app`, so branch
+              # protection can require it: pending now, success or failure at the end.
+              # Needs Commit statuses: Read and write on account.github_token; a
+              # missing permission only warns, the build itself is not affected.
+              - step:
+                  type: Run
+                  name: GitHub Status Pending
+                  identifier: GitHub_Status_Pending
+                  when:
+                    stageStatus: Success
+                    condition: <+pipeline.variables.isRelease> == "false"
+                  spec:
+                    connectorRef: account.dockerio
+                    image: alpine:latest
+                    shell: Sh
+                    envVariables:
+                      GITHUB_TOKEN: <+secrets.getValue("account.github_token")>
+                    command: |-
+                      apk add --no-cache curl >/dev/null
+                      SHA=<+execution.steps.Kosli_Setup.output.outputVariables.COMMIT_SHA>
+                      curl -sSf -X POST -H "Authorization: Bearer $GITHUB_TOKEN" -H "Accept: application/vnd.github+json" \
+                        "https://api.github.com/repos/SoniaBoussabeh/ai-app/statuses/$SHA" \
+                        -d '{"state":"pending","context":"harness/ai-app","description":"Harness PR build running","target_url":"<+pipeline.executionUrl>"}' >/dev/null \
+                        && echo "GitHub status: pending" || echo "WARN: could not post GitHub status (token needs Commit statuses: write)"
+
               - step:
                   type: Run
                   name: Read Version
@@ -222,8 +247,10 @@ pipeline:
                   type: Run
                   name: Kosli Attest HTML Lint
                   identifier: Kosli_Attest_HTML_Lint
+                  # All = also after a failed lint, but only once the Kosli CLI is installed.
                   when:
                     stageStatus: All
+                    condition: <+execution.steps.Kosli_Setup.status> == "SUCCEEDED"
                   spec:
                     connectorRef: account.dockerio
                     image: alpine:latest
@@ -563,6 +590,28 @@ pipeline:
                         --repo-id "<+pipeline.variables.githubRepoId>" \
                         --origin-url "<+pipeline.executionUrl>"
 
+              # A failed Build stage skips Test, so the PR status is closed here.
+              - step:
+                  type: Run
+                  name: GitHub Status Failure Build
+                  identifier: GitHub_Status_Failure_Build
+                  when:
+                    stageStatus: Failure
+                    condition: <+pipeline.variables.isRelease> == "false"
+                  spec:
+                    connectorRef: account.dockerio
+                    image: alpine:latest
+                    shell: Sh
+                    envVariables:
+                      GITHUB_TOKEN: <+secrets.getValue("account.github_token")>
+                    command: |-
+                      apk add --no-cache curl >/dev/null
+                      SHA=$(cd /harness/test && git rev-parse HEAD 2>/dev/null || echo "<+execution.steps.Kosli_Setup.output.outputVariables.COMMIT_SHA>")
+                      curl -sSf -X POST -H "Authorization: Bearer $GITHUB_TOKEN" -H "Accept: application/vnd.github+json" \
+                        "https://api.github.com/repos/SoniaBoussabeh/ai-app/statuses/$SHA" \
+                        -d '{"state":"failure","context":"harness/ai-app","description":"Harness PR build failed in Build","target_url":"<+pipeline.executionUrl>"}' >/dev/null \
+                        && echo "GitHub status: failure" || echo "WARN: could not post GitHub status"
+
           infrastructure:
             type: KubernetesDirect
             spec:
@@ -777,6 +826,73 @@ pipeline:
                         --repo-url "https://github.com/SoniaBoussabeh/ai-app" \
                         --repo-id "<+pipeline.variables.githubRepoId>" \
                         --origin-url "<+pipeline.executionUrl>"
+
+              # <-- KOSLI: deploy gate (SCRUM-9). Release builds only, after every
+              # attestation is in: the new image must already satisfy ALL policies
+              # attached to ai-app-prod, or this step fails and Deploy never starts.
+              - step:
+                  type: Run
+                  name: Kosli Assert Before Deploy
+                  identifier: Kosli_Assert_Before_Deploy
+                  when:
+                    stageStatus: Success
+                    condition: <+pipeline.variables.isRelease> == "true"
+                  spec:
+                    connectorRef: account.dockerio
+                    image: alpine:latest
+                    shell: Sh
+                    envVariables:
+                      KOSLI_API_TOKEN: <+secrets.getValue("account.kosli_api_token")>
+                      KOSLI_ORG: SDL-Sandbox
+                    command: |-
+                      set -eu
+                      KOSLI_VERSION=2.36.1
+                      apk add --no-cache curl >/dev/null
+                      curl -fsSL "https://github.com/kosli-dev/cli/releases/download/v${KOSLI_VERSION}/kosli_${KOSLI_VERSION}_linux_amd64.tar.gz" | tar -xz -C /usr/local/bin kosli
+                      IMAGE="docker.io/soniabou/ai-app:<+pipeline.stages.Build.spec.execution.steps.Read_Version.output.outputVariables.IMAGE_TAG>"
+                      kosli assert artifact "$IMAGE" --artifact-type oci --flow ai-app --environment ai-app-prod
+
+              - step:
+                  type: Run
+                  name: GitHub Status Success
+                  identifier: GitHub_Status_Success
+                  when:
+                    stageStatus: Success
+                    condition: <+pipeline.variables.isRelease> == "false"
+                  spec:
+                    connectorRef: account.dockerio
+                    image: alpine:latest
+                    shell: Sh
+                    envVariables:
+                      GITHUB_TOKEN: <+secrets.getValue("account.github_token")>
+                    command: |-
+                      apk add --no-cache curl >/dev/null
+                      SHA=<+pipeline.stages.Build.spec.execution.steps.Kosli_Setup.output.outputVariables.COMMIT_SHA>
+                      curl -sSf -X POST -H "Authorization: Bearer $GITHUB_TOKEN" -H "Accept: application/vnd.github+json" \
+                        "https://api.github.com/repos/SoniaBoussabeh/ai-app/statuses/$SHA" \
+                        -d '{"state":"success","context":"harness/ai-app","description":"Harness PR build passed","target_url":"<+pipeline.executionUrl>"}' >/dev/null \
+                        && echo "GitHub status: success" || echo "WARN: could not post GitHub status"
+
+              - step:
+                  type: Run
+                  name: GitHub Status Failure Test
+                  identifier: GitHub_Status_Failure_Test
+                  when:
+                    stageStatus: Failure
+                    condition: <+pipeline.variables.isRelease> == "false"
+                  spec:
+                    connectorRef: account.dockerio
+                    image: alpine:latest
+                    shell: Sh
+                    envVariables:
+                      GITHUB_TOKEN: <+secrets.getValue("account.github_token")>
+                    command: |-
+                      apk add --no-cache curl >/dev/null
+                      SHA=<+pipeline.stages.Build.spec.execution.steps.Kosli_Setup.output.outputVariables.COMMIT_SHA>
+                      curl -sSf -X POST -H "Authorization: Bearer $GITHUB_TOKEN" -H "Accept: application/vnd.github+json" \
+                        "https://api.github.com/repos/SoniaBoussabeh/ai-app/statuses/$SHA" \
+                        -d '{"state":"failure","context":"harness/ai-app","description":"Harness PR build failed in Test","target_url":"<+pipeline.executionUrl>"}' >/dev/null \
+                        && echo "GitHub status: failure" || echo "WARN: could not post GitHub status"
           infrastructure:
             useFromStage: Build
 
@@ -859,7 +975,7 @@ pipeline:
     # Pipeline Freshness Check compares it with main to detect a stale cache.
     - name: pipelineRevision
       type: String
-      value: "3"
+      value: "4"
     - name: githubRepoId
       type: String
       value: "1445561751"
