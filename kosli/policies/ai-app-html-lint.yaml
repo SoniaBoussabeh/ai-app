@@ -1,0 +1,6 @@
+_schema: https://docs.kosli.com/schemas/policy/v1
+# The pages passed the static HTML check.
+artifacts:
+  attestations:
+    - name: html-lint
+      type: junit

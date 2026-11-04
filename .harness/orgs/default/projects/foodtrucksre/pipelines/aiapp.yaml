@@ -156,6 +156,59 @@ pipeline:
                         --repo-id "<+pipeline.variables.githubRepoId>" \
                         --description "ai-app build <+pipeline.sequenceId>"
 
+              # Static check of the pages (htmlhint default rules), as JUnit.
+              - step:
+                  type: Run
+                  name: HTML Lint
+                  identifier: HTML_Lint
+                  spec:
+                    connectorRef: account.dockerio
+                    image: node:20-alpine
+                    shell: Sh
+                    command: |-
+                      set -u
+                      mkdir -p /harness/lint-results
+                      cd /harness/test
+                      npx --yes htmlhint@1.1.4 "app/**/*.html" --format junit > /harness/lint-results/html.xml
+                      RC=$?
+                      cat /harness/lint-results/html.xml
+                      exit $RC
+                    reports:
+                      type: JUnit
+                      spec:
+                        paths:
+                          - /harness/lint-results/*.xml
+
+              # `stageStatus: All`: a failed lint is evidence too and must reach Kosli.
+              - step:
+                  type: Run
+                  name: Kosli Attest HTML Lint
+                  identifier: Kosli_Attest_HTML_Lint
+                  when:
+                    stageStatus: All
+                  spec:
+                    connectorRef: account.dockerio
+                    image: alpine:latest
+                    shell: Sh
+                    envVariables:
+                      KOSLI_API_TOKEN: <+secrets.getValue("account.kosli_api_token")>
+                      KOSLI_ORG: SDL-Sandbox
+                      KOSLI_FLOW: ai-app
+                    command: |-
+                      set -eu
+                      SHA=<+execution.steps.Kosli_Setup.output.outputVariables.COMMIT_SHA>
+                      /harness/bin/kosli attest junit \
+                        --name html-lint \
+                        --results-dir /harness/lint-results \
+                        --trail "$SHA" \
+                        --commit "$SHA" \
+                        --repo-root /harness/test \
+                        --repo-provider github \
+                        --repository "SoniaBoussabeh/ai-app" \
+                        --repo-url "https://github.com/SoniaBoussabeh/ai-app" \
+                        --repo-id "<+pipeline.variables.githubRepoId>" \
+                        --origin-url "<+pipeline.executionUrl>"
+
               - step:
                   type: BuildAndPushDockerRegistry
                   name: BuildAndPushDockerRegistry_1
@@ -201,6 +254,64 @@ pipeline:
                         --repository "SoniaBoussabeh/ai-app" \
                         --repo-url "https://github.com/SoniaBoussabeh/ai-app" \
                         --repo-id "<+pipeline.variables.githubRepoId>"
+
+              # <-- KOSLI: scans the pushed image (Trivy) and records its SBOM (Syft).
+              # REPORT-ONLY: HIGH/CRITICAL findings make the `vulnerability-scan`
+              # attestation non-compliant but do not stop the build, so Kosli policy
+              # (not the pipeline) decides. Set SCAN_GATE=true to also fail the build.
+              - step:
+                  type: Run
+                  name: Kosli Attest Vulnerability Scan and SBOM
+                  identifier: Kosli_Attest_Scan_SBOM
+                  spec:
+                    connectorRef: account.dockerio
+                    image: alpine:latest
+                    shell: Sh
+                    envVariables:
+                      KOSLI_API_TOKEN: <+secrets.getValue("account.kosli_api_token")>
+                      KOSLI_ORG: SDL-Sandbox
+                      KOSLI_FLOW: ai-app
+                      SCAN_GATE: "false"
+                    command: |-
+                      set -eu
+                      TRIVY_VERSION=0.56.2
+                      SYFT_VERSION=1.14.0
+                      apk add --no-cache curl jq >/dev/null
+                      curl -fsSL "https://github.com/aquasecurity/trivy/releases/download/v${TRIVY_VERSION}/trivy_${TRIVY_VERSION}_Linux-64bit.tar.gz" | tar -xz -C /usr/local/bin trivy
+                      curl -fsSL "https://github.com/anchore/syft/releases/download/v${SYFT_VERSION}/syft_${SYFT_VERSION}_linux_amd64.tar.gz" | tar -xz -C /usr/local/bin syft
+                      SHA=<+execution.steps.Kosli_Setup.output.outputVariables.COMMIT_SHA>
+                      IMAGE="docker.io/soniabou/ai-app:<+execution.steps.Read_Version.output.outputVariables.IMAGE_TAG>"
+                      REPO="--repo-root /harness/test --repo-provider github --repository SoniaBoussabeh/ai-app --repo-url https://github.com/SoniaBoussabeh/ai-app --repo-id <+pipeline.variables.githubRepoId>"
+
+                      trivy image --quiet --severity HIGH,CRITICAL --format json -o /harness/trivy.json "$IMAGE"
+                      HIGH=$(jq '[.Results[]?.Vulnerabilities[]? | select(.Severity=="HIGH")] | length' /harness/trivy.json)
+                      CRIT=$(jq '[.Results[]?.Vulnerabilities[]? | select(.Severity=="CRITICAL")] | length' /harness/trivy.json)
+                      if [ "$((HIGH + CRIT))" -eq 0 ]; then COMPLIANT=true; else COMPLIANT=false; fi
+                      echo "Trivy: $CRIT CRITICAL, $HIGH HIGH -> compliant=$COMPLIANT"
+                      printf '{"scanner":"trivy %s","critical":%s,"high":%s}\n' "$TRIVY_VERSION" "$CRIT" "$HIGH" > /harness/trivy-summary.json
+                      /harness/bin/kosli attest generic \
+                        --name vulnerability-scan \
+                        --compliant="$COMPLIANT" \
+                        --description "Trivy: $CRIT CRITICAL, $HIGH HIGH in $IMAGE" \
+                        --attachments /harness/trivy.json \
+                        --user-data /harness/trivy-summary.json \
+                        --trail "$SHA" --commit "$SHA" $REPO \
+                        --origin-url "<+pipeline.executionUrl>"
+
+                      syft "$IMAGE" -q -o cyclonedx-json=/harness/sbom.cdx.json
+                      echo "SBOM: $(jq '.components | length' /harness/sbom.cdx.json) components"
+                      /harness/bin/kosli attest generic \
+                        --name sbom \
+                        --compliant=true \
+                        --description "CycloneDX SBOM of $IMAGE (syft $SYFT_VERSION)" \
+                        --attachments /harness/sbom.cdx.json \
+                        --trail "$SHA" --commit "$SHA" $REPO \
+                        --origin-url "<+pipeline.executionUrl>"
+
+                      if [ "$SCAN_GATE" = "true" ] && [ "$COMPLIANT" = "false" ]; then
+                        echo "SCAN_GATE: failing the build on HIGH/CRITICAL findings"
+                        exit 1
+                      fi
 
               # <-- KOSLI: the only step that calls the GitHub API. Satisfies the
               # `pull-request` attestation in flow-template.yml.
@@ -518,6 +629,60 @@ pipeline:
                       spec:
                         paths:
                           - /harness/test-results/*.xml
+
+              # k6 load test against the same image (tests/load/ai-app.js): 5 users
+              # for 20 s; thresholds p95 < 500 ms and < 1% errors decide pass/fail.
+              - step:
+                  type: Run
+                  name: Load Test
+                  identifier: Load_Test
+                  spec:
+                    connectorRef: account.dockerio
+                    image: grafana/k6:0.54.0
+                    shell: Sh
+                    command: |-
+                      mkdir -p /harness/load-results
+                      k6 run --quiet \
+                        -e BASE_URL=http://127.0.0.1:8080 \
+                        -e RESULTS_FILE=/harness/load-results/load.xml \
+                        /harness/test/tests/load/ai-app.js
+                    reports:
+                      type: JUnit
+                      spec:
+                        paths:
+                          - /harness/load-results/*.xml
+
+              - step:
+                  type: Run
+                  name: Kosli Attest Load Test
+                  identifier: Kosli_Attest_Load_Test
+                  when:
+                    stageStatus: All
+                  spec:
+                    connectorRef: account.dockerio
+                    image: alpine:latest
+                    shell: Sh
+                    envVariables:
+                      KOSLI_API_TOKEN: <+secrets.getValue("account.kosli_api_token")>
+                      KOSLI_ORG: SDL-Sandbox
+                      KOSLI_FLOW: ai-app
+                    command: |-
+                      set -eu
+                      KOSLI_VERSION=2.36.1
+                      apk add --no-cache curl >/dev/null
+                      curl -fsSL "https://github.com/kosli-dev/cli/releases/download/v${KOSLI_VERSION}/kosli_${KOSLI_VERSION}_linux_amd64.tar.gz" | tar -xz -C /usr/local/bin kosli
+                      SHA=<+pipeline.stages.Build.spec.execution.steps.Kosli_Setup.output.outputVariables.COMMIT_SHA>
+                      kosli attest junit \
+                        --name load-test \
+                        --results-dir /harness/load-results \
+                        --trail "$SHA" \
+                        --commit "$SHA" \
+                        --repo-root /harness/test \
+                        --repo-provider github \
+                        --repository "SoniaBoussabeh/ai-app" \
+                        --repo-url "https://github.com/SoniaBoussabeh/ai-app" \
+                        --repo-id "<+pipeline.variables.githubRepoId>" \
+                        --origin-url "<+pipeline.executionUrl>"
 
               # Records the JUnit results on the trail. `stageStatus: All` runs
               # this even when Smoke Tests failed - a failed run is evidence too,
