@@ -1,0 +1,13 @@
+infrastructureDefinition:
+  name: ai-app-infra
+  identifier: aiappinfra
+  orgIdentifier: default
+  projectIdentifier: foodtrucksre
+  environmentRef: prod_Env
+  deploymentType: Kubernetes
+  type: KubernetesDirect
+  spec:
+    connectorRef: account.SRETrainingCluster
+    namespace: ai-app
+    releaseName: release-<+INFRA_KEY_SHORT_ID>
+  allowSimultaneousDeployments: false
