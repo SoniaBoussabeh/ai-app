@@ -294,9 +294,10 @@ pipeline:
                         --repo-id "<+pipeline.variables.githubRepoId>"
 
               # <-- KOSLI: scans the pushed image (Trivy) and records its SBOM (Syft).
-              # REPORT-ONLY: HIGH/CRITICAL findings make the `vulnerability-scan`
-              # attestation non-compliant but do not stop the build, so Kosli policy
-              # (not the pipeline) decides. Set SCAN_GATE=true to also fail the build.
+              # GATE (SCRUM-8, CM-08): any HIGH/CRITICAL finding fails the build before
+              # Deploy. The only way to accept one is an entry in .trivyignore.yaml with
+              # a reason and an expiry date, added through a reviewed PR; accepted
+              # findings are attached to the attestation. Expired entries stop applying.
               - step:
                   type: Run
                   name: Kosli Attest Vulnerability Scan and SBOM
@@ -309,7 +310,7 @@ pipeline:
                       KOSLI_API_TOKEN: <+secrets.getValue("account.kosli_api_token")>
                       KOSLI_ORG: SDL-Sandbox
                       KOSLI_FLOW: ai-app
-                      SCAN_GATE: "false"
+                      SCAN_GATE: "true"
                     command: |-
                       set -eu
                       TRIVY_VERSION=0.76.0
@@ -331,17 +332,22 @@ pipeline:
                       IMAGE="docker.io/soniabou/ai-app:<+execution.steps.Read_Version.output.outputVariables.IMAGE_TAG>"
                       REPO="--repo-root /harness/test --repo-provider github --repository SoniaBoussabeh/ai-app --repo-url https://github.com/SoniaBoussabeh/ai-app --repo-id <+pipeline.variables.githubRepoId>"
 
-                      trivy image --quiet --severity HIGH,CRITICAL --format json -o /harness/trivy.json "$IMAGE"
+                      EXCEPTIONS=/harness/test/.trivyignore.yaml
+                      trivy image --quiet --severity HIGH,CRITICAL --ignorefile "$EXCEPTIONS" --show-suppressed \
+                        --format json -o /harness/trivy.json "$IMAGE"
                       HIGH=$(jq '[.Results[]?.Vulnerabilities[]? | select(.Severity=="HIGH")] | length' /harness/trivy.json)
                       CRIT=$(jq '[.Results[]?.Vulnerabilities[]? | select(.Severity=="CRITICAL")] | length' /harness/trivy.json)
+                      ACCEPTED=$(jq '[.Results[]?.ExperimentalModifiedFindings[]? | select(.Status=="ignored")] | length' /harness/trivy.json)
                       if [ "$((HIGH + CRIT))" -eq 0 ]; then COMPLIANT=true; else COMPLIANT=false; fi
-                      echo "Trivy: $CRIT CRITICAL, $HIGH HIGH -> compliant=$COMPLIANT"
-                      printf '{"scanner":"trivy %s","critical":%s,"high":%s}\n' "$TRIVY_VERSION" "$CRIT" "$HIGH" > /harness/trivy-summary.json
+                      echo "Trivy: $CRIT CRITICAL, $HIGH HIGH open; $ACCEPTED accepted by exception -> compliant=$COMPLIANT"
+                      jq -r '.Results[]?.ExperimentalModifiedFindings[]? | "  accepted: \(.Finding.VulnerabilityID) - \(.Statement)"' /harness/trivy.json
+                      printf '{"scanner":"trivy %s","critical":%s,"high":%s,"accepted_by_exception":%s,"gate":"%s"}\n' \
+                        "$TRIVY_VERSION" "$CRIT" "$HIGH" "$ACCEPTED" "$SCAN_GATE" > /harness/trivy-summary.json
                       /harness/bin/kosli attest generic \
                         --name vulnerability-scan \
                         --compliant="$COMPLIANT" \
-                        --description "Trivy: $CRIT CRITICAL, $HIGH HIGH in $IMAGE" \
-                        --attachments /harness/trivy.json \
+                        --description "Trivy: $CRIT CRITICAL, $HIGH HIGH open, $ACCEPTED accepted by exception in $IMAGE" \
+                        --attachments /harness/trivy.json,"$EXCEPTIONS" \
                         --user-data /harness/trivy-summary.json \
                         --trail "$SHA" --commit "$SHA" $REPO \
                         --origin-url "<+pipeline.executionUrl>"
@@ -357,7 +363,8 @@ pipeline:
                         --origin-url "<+pipeline.executionUrl>"
 
                       if [ "$SCAN_GATE" = "true" ] && [ "$COMPLIANT" = "false" ]; then
-                        echo "SCAN_GATE: failing the build on HIGH/CRITICAL findings"
+                        echo "SCAN_GATE: failing the build on HIGH/CRITICAL findings."
+                        echo "Fix them, or accept one through a reviewed PR to .trivyignore.yaml (reason + expired_at)."
                         exit 1
                       fi
 
@@ -852,7 +859,7 @@ pipeline:
     # Pipeline Freshness Check compares it with main to detect a stale cache.
     - name: pipelineRevision
       type: String
-      value: "2"
+      value: "3"
     - name: githubRepoId
       type: String
       value: "1445561751"

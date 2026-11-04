@@ -1,0 +1,14 @@
+# Accepted vulnerability exceptions for the Trivy gate (SCRUM-8, checklist CM-08).
+#
+# The pipeline fails on any HIGH or CRITICAL finding not listed here. An entry is the
+# documented exception: change this file only through a pull request, so the PR
+# approver is the person who accepted the risk, and the file itself is attached to the
+# Kosli `vulnerability-scan` attestation of every build.
+#
+# Every entry needs a reason (owner, ticket, why) and an expiry date. After expired_at
+# Trivy stops applying it and the gate fails again.
+#
+#   - id: CVE-2026-12345
+#     statement: "No fix released yet; not reachable in nginx static serving. Owner: <name>. Ticket: SCRUM-n"
+#     expired_at: 2026-12-31
+vulnerabilities: []
