@@ -43,6 +43,33 @@ pipeline:
                       spec:
                         branch: <+pipeline.variables.gitBranch>
 
+              # Harness runs a CACHED copy of this file; a trigger can start before
+              # the cache sees a new push. Stop before building if the copy running
+              # is older than main (its pipelineRevision differs), so a stale
+              # pipeline can never release. Fix: re-run once the cache has caught up.
+              - step:
+                  type: Run
+                  name: Pipeline Freshness Check
+                  identifier: Pipeline_Freshness_Check
+                  spec:
+                    connectorRef: account.dockerio
+                    image: alpine:latest
+                    shell: Sh
+                    envVariables:
+                      GITHUB_TOKEN: <+secrets.getValue("account.github_token")>
+                    command: |-
+                      set -eu
+                      apk add --no-cache curl >/dev/null
+                      RUNNING="<+pipeline.variables.pipelineRevision>"
+                      ON_MAIN=$(curl -sSf -H "Authorization: Bearer $GITHUB_TOKEN" -H "Accept: application/vnd.github.raw" \
+                        "https://api.github.com/repos/SoniaBoussabeh/ai-app/contents/.harness/orgs/default/projects/foodtrucksre/pipelines/aiapp.yaml?ref=main" \
+                        | awk '/^    - name: pipelineRevision$/ { f = 1; next } f && /value:/ { gsub(/["[:space:]]/, "", $2); print $2; exit }')
+                      echo "pipelineRevision running: $RUNNING   on main: $ON_MAIN"
+                      if [ "$RUNNING" != "$ON_MAIN" ]; then
+                        echo "ERROR: stale pipeline - Harness ran a cached copy older than main. Re-run this pipeline."
+                        exit 1
+                      fi
+
               # <-- KOSLI: install the CLI into the shared /harness volume and
               # capture the commit SHA. Needed because cloneCodebase is false, so
               # <+codebase.commitSha> is not available in this pipeline.
@@ -123,6 +150,17 @@ pipeline:
                         print "no" }')
                       if [ "$HIGHER" != "yes" ]; then
                         echo "ERROR: bump VERSION above $OLD in this PR (e.g. patch: increase the last number)."
+                        exit 1
+                      fi
+
+                      # A PR that changes this pipeline must also raise pipelineRevision,
+                      # otherwise Pipeline Freshness Check cannot tell old from new.
+                      PIPE=.harness/orgs/default/projects/foodtrucksre/pipelines/aiapp.yaml
+                      curl -sSf -H "Authorization: Bearer $GITHUB_TOKEN" -H "Accept: application/vnd.github.raw" \
+                        "https://api.github.com/repos/SoniaBoussabeh/ai-app/contents/$PIPE?ref=main" > /tmp/pipeline-main.yaml
+                      rev() { awk '/^    - name: pipelineRevision$/ { f = 1; next } f && /value:/ { gsub(/["[:space:]]/, "", $2); print $2; exit }' "$1"; }
+                      if ! cmp -s /tmp/pipeline-main.yaml "/harness/test/$PIPE" && [ "$(rev /tmp/pipeline-main.yaml)" = "$(rev "/harness/test/$PIPE")" ]; then
+                        echo "ERROR: this PR changes $PIPE - raise pipelineRevision (now $(rev /tmp/pipeline-main.yaml))."
                         exit 1
                       fi
 
@@ -274,11 +312,21 @@ pipeline:
                       SCAN_GATE: "false"
                     command: |-
                       set -eu
-                      TRIVY_VERSION=0.56.2
+                      TRIVY_VERSION=0.76.0
                       SYFT_VERSION=1.14.0
                       apk add --no-cache curl jq >/dev/null
-                      curl -fsSL "https://github.com/aquasecurity/trivy/releases/download/v${TRIVY_VERSION}/trivy_${TRIVY_VERSION}_Linux-64bit.tar.gz" | tar -xz -C /usr/local/bin trivy
-                      curl -fsSL "https://github.com/anchore/syft/releases/download/v${SYFT_VERSION}/syft_${SYFT_VERSION}_linux_amd64.tar.gz" | tar -xz -C /usr/local/bin syft
+                      # Download, verify against the release's published sha256, then install.
+                      fetch() { # fetch <base-url> <archive> <checksums-file> <binary>
+                        cd /tmp
+                        curl -fsSLO "$1/$2"
+                        curl -fsSL "$1/$3" | grep " $2\$" | sha256sum -c -
+                        tar -xzf "$2" -C /usr/local/bin "$4"
+                        cd - >/dev/null
+                      }
+                      fetch "https://github.com/aquasecurity/trivy/releases/download/v${TRIVY_VERSION}" \
+                        "trivy_${TRIVY_VERSION}_Linux-64bit.tar.gz" "trivy_${TRIVY_VERSION}_checksums.txt" trivy
+                      fetch "https://github.com/anchore/syft/releases/download/v${SYFT_VERSION}" \
+                        "syft_${SYFT_VERSION}_linux_amd64.tar.gz" "syft_${SYFT_VERSION}_checksums.txt" syft
                       SHA=<+execution.steps.Kosli_Setup.output.outputVariables.COMMIT_SHA>
                       IMAGE="docker.io/soniabou/ai-app:<+execution.steps.Read_Version.output.outputVariables.IMAGE_TAG>"
                       REPO="--repo-root /harness/test --repo-provider github --repository SoniaBoussabeh/ai-app --repo-url https://github.com/SoniaBoussabeh/ai-app --repo-id <+pipeline.variables.githubRepoId>"
@@ -800,6 +848,11 @@ pipeline:
     - name: isRelease
       type: String
       value: <+input>.default(true).allowedValues(true,false)
+    # Raise by 1 in every PR that changes this file (checked on PR builds);
+    # Pipeline Freshness Check compares it with main to detect a stale cache.
+    - name: pipelineRevision
+      type: String
+      value: "2"
     - name: githubRepoId
       type: String
       value: "1445561751"
