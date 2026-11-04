@@ -65,7 +65,7 @@
             {
               "selector": "state",
               "text": "value",
-              "type": "boolean"
+              "type": "string"
             }
           ]
         }
@@ -78,7 +78,7 @@
           "calcs": [
             "lastNotNull"
           ],
-          "fields": "",
+          "fields": "/^value$/",
           "values": false
         }
       },
@@ -154,7 +154,7 @@
             {
               "selector": "state",
               "text": "value",
-              "type": "boolean"
+              "type": "string"
             }
           ]
         }
@@ -167,7 +167,7 @@
           "calcs": [
             "lastNotNull"
           ],
-          "fields": "",
+          "fields": "/^value$/",
           "values": false
         }
       },
