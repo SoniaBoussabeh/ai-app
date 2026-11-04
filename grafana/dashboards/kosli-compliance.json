@@ -1,0 +1,729 @@
+{
+  "uid": "ai-app-kosli-compliance",
+  "title": "ai-app: Kosli compliance",
+  "tags": [
+    "ai-app",
+    "kosli",
+    "change-management"
+  ],
+  "timezone": "browser",
+  "schemaVersion": 39,
+  "refresh": "5m",
+  "time": {
+    "from": "now-7d",
+    "to": "now"
+  },
+  "description": "Managed in Git: SoniaBoussabeh/ai-app grafana/dashboards/kosli-compliance.json (SCRUM-7). Do not edit in the UI.",
+  "templating": {
+    "list": [
+      {
+        "name": "kosli",
+        "label": "Kosli data source",
+        "type": "datasource",
+        "query": "yesoreyeram-infinity-datasource",
+        "regex": "/Kosli/",
+        "current": {
+          "text": "Kosli SDL-Sandbox",
+          "value": "ag3bpx5ltfg1sc"
+        },
+        "hide": 0
+      }
+    ]
+  },
+  "panels": [
+    {
+      "id": 1,
+      "type": "stat",
+      "title": "ai-app-prod",
+      "datasource": {
+        "type": "yesoreyeram-infinity-datasource",
+        "uid": "${kosli}"
+      },
+      "gridPos": {
+        "x": 0,
+        "y": 0,
+        "w": 6,
+        "h": 5
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "yesoreyeram-infinity-datasource",
+            "uid": "${kosli}"
+          },
+          "type": "json",
+          "source": "url",
+          "format": "table",
+          "parser": "backend",
+          "url": "https://app.kosli.com/api/v2/environments/SDL-Sandbox/ai-app-prod",
+          "url_options": {
+            "method": "GET"
+          },
+          "root_selector": "",
+          "columns": [
+            {
+              "selector": "state",
+              "text": "value",
+              "type": "string"
+            }
+          ]
+        }
+      ],
+      "options": {
+        "colorMode": "background",
+        "graphMode": "none",
+        "textMode": "value",
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "/^value$/",
+          "values": false
+        }
+      },
+      "fieldConfig": {
+        "defaults": {
+          "mappings": [
+            {
+              "type": "value",
+              "options": {
+                "true": {
+                  "text": "Compliant",
+                  "color": "green",
+                  "index": 0
+                },
+                "false": {
+                  "text": "Non-compliant",
+                  "color": "red",
+                  "index": 1
+                }
+              }
+            },
+            {
+              "type": "special",
+              "options": {
+                "match": "null",
+                "result": {
+                  "text": "N/A (no policy)",
+                  "color": "text",
+                  "index": 2
+                }
+              }
+            }
+          ],
+          "color": {
+            "mode": "fixed",
+            "fixedColor": "text"
+          }
+        },
+        "overrides": []
+      }
+    },
+    {
+      "id": 2,
+      "type": "stat",
+      "title": "simple-app-prod",
+      "datasource": {
+        "type": "yesoreyeram-infinity-datasource",
+        "uid": "${kosli}"
+      },
+      "gridPos": {
+        "x": 6,
+        "y": 0,
+        "w": 6,
+        "h": 5
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "yesoreyeram-infinity-datasource",
+            "uid": "${kosli}"
+          },
+          "type": "json",
+          "source": "url",
+          "format": "table",
+          "parser": "backend",
+          "url": "https://app.kosli.com/api/v2/environments/SDL-Sandbox/simple-app-prod",
+          "url_options": {
+            "method": "GET"
+          },
+          "root_selector": "",
+          "columns": [
+            {
+              "selector": "state",
+              "text": "value",
+              "type": "string"
+            }
+          ]
+        }
+      ],
+      "options": {
+        "colorMode": "background",
+        "graphMode": "none",
+        "textMode": "value",
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "/^value$/",
+          "values": false
+        }
+      },
+      "fieldConfig": {
+        "defaults": {
+          "mappings": [
+            {
+              "type": "value",
+              "options": {
+                "true": {
+                  "text": "Compliant",
+                  "color": "green",
+                  "index": 0
+                },
+                "false": {
+                  "text": "Non-compliant",
+                  "color": "red",
+                  "index": 1
+                }
+              }
+            },
+            {
+              "type": "special",
+              "options": {
+                "match": "null",
+                "result": {
+                  "text": "N/A (no policy)",
+                  "color": "text",
+                  "index": 2
+                }
+              }
+            }
+          ],
+          "color": {
+            "mode": "fixed",
+            "fixedColor": "text"
+          }
+        },
+        "overrides": []
+      }
+    },
+    {
+      "id": 3,
+      "type": "stat",
+      "title": "Running in ai-app-prod",
+      "datasource": {
+        "type": "yesoreyeram-infinity-datasource",
+        "uid": "${kosli}"
+      },
+      "gridPos": {
+        "x": 12,
+        "y": 0,
+        "w": 12,
+        "h": 5
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "yesoreyeram-infinity-datasource",
+            "uid": "${kosli}"
+          },
+          "type": "json",
+          "source": "url",
+          "format": "table",
+          "parser": "backend",
+          "url": "https://app.kosli.com/api/v2/snapshots/SDL-Sandbox/ai-app-prod/-1",
+          "url_options": {
+            "method": "GET"
+          },
+          "root_selector": "artifacts[annotation.type != \"exited\"]",
+          "columns": [
+            {
+              "selector": "name",
+              "text": "Artifact",
+              "type": "string"
+            }
+          ]
+        }
+      ],
+      "options": {
+        "colorMode": "none",
+        "graphMode": "none",
+        "textMode": "value",
+        "reduceOptions": {
+          "calcs": [
+            "firstNotNull"
+          ],
+          "fields": "/^Artifact$/",
+          "values": false
+        }
+      },
+      "fieldConfig": {
+        "defaults": {},
+        "overrides": []
+      }
+    },
+    {
+      "id": 4,
+      "type": "table",
+      "title": "Environments",
+      "description": "All Kosli environments in org SDL-Sandbox; N/A means no policy is attached.",
+      "datasource": {
+        "type": "yesoreyeram-infinity-datasource",
+        "uid": "${kosli}"
+      },
+      "gridPos": {
+        "x": 0,
+        "y": 5,
+        "w": 24,
+        "h": 7
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "yesoreyeram-infinity-datasource",
+            "uid": "${kosli}"
+          },
+          "type": "json",
+          "source": "url",
+          "format": "table",
+          "parser": "backend",
+          "url": "https://app.kosli.com/api/v2/environments/SDL-Sandbox",
+          "url_options": {
+            "method": "GET"
+          },
+          "root_selector": "",
+          "columns": [
+            {
+              "selector": "name",
+              "text": "Environment",
+              "type": "string"
+            },
+            {
+              "selector": "type",
+              "text": "Type",
+              "type": "string"
+            },
+            {
+              "selector": "state",
+              "text": "Compliance",
+              "type": "boolean"
+            },
+            {
+              "selector": "description",
+              "text": "Description",
+              "type": "string"
+            },
+            {
+              "selector": "last_reported_at",
+              "text": "Last report",
+              "type": "timestamp_epoch_s"
+            }
+          ]
+        }
+      ],
+      "options": {
+        "showHeader": true,
+        "cellHeight": "sm"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "custom": {
+            "align": "auto",
+            "filterable": true
+          }
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Compliance"
+            },
+            "properties": [
+              {
+                "id": "mappings",
+                "value": [
+                  {
+                    "type": "value",
+                    "options": {
+                      "true": {
+                        "text": "Compliant",
+                        "color": "green",
+                        "index": 0
+                      },
+                      "false": {
+                        "text": "Non-compliant",
+                        "color": "red",
+                        "index": 1
+                      }
+                    }
+                  },
+                  {
+                    "type": "special",
+                    "options": {
+                      "match": "null",
+                      "result": {
+                        "text": "N/A (no policy)",
+                        "color": "text",
+                        "index": 2
+                      }
+                    }
+                  }
+                ]
+              },
+              {
+                "id": "custom.cellOptions",
+                "value": {
+                  "type": "color-background",
+                  "mode": "basic"
+                }
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "id": 5,
+      "type": "table",
+      "title": "ai-app trails (one per commit)",
+      "description": "Evidence per commit in flow ai-app: pull request, review decision, Jira, tests, scan, SBOM.",
+      "datasource": {
+        "type": "yesoreyeram-infinity-datasource",
+        "uid": "${kosli}"
+      },
+      "gridPos": {
+        "x": 0,
+        "y": 12,
+        "w": 24,
+        "h": 9
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "yesoreyeram-infinity-datasource",
+            "uid": "${kosli}"
+          },
+          "type": "json",
+          "source": "url",
+          "format": "table",
+          "parser": "backend",
+          "url": "https://app.kosli.com/api/v2/trails/SDL-Sandbox/ai-app?per_page=20",
+          "url_options": {
+            "method": "GET"
+          },
+          "root_selector": "data",
+          "columns": [
+            {
+              "selector": "created_at",
+              "text": "Started",
+              "type": "timestamp_epoch_s"
+            },
+            {
+              "selector": "git_commit_info.message",
+              "text": "Commit message",
+              "type": "string"
+            },
+            {
+              "selector": "compliance_status.status",
+              "text": "Trail status",
+              "type": "string"
+            },
+            {
+              "selector": "git_commit_info.author",
+              "text": "Author",
+              "type": "string"
+            },
+            {
+              "selector": "name",
+              "text": "Commit SHA",
+              "type": "string"
+            }
+          ]
+        }
+      ],
+      "options": {
+        "showHeader": true,
+        "cellHeight": "sm"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "custom": {
+            "align": "auto",
+            "filterable": true
+          }
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Trail status"
+            },
+            "properties": [
+              {
+                "id": "mappings",
+                "value": [
+                  {
+                    "type": "value",
+                    "options": {
+                      "COMPLIANT": {
+                        "color": "green",
+                        "index": 0
+                      },
+                      "NON-COMPLIANT": {
+                        "color": "red",
+                        "index": 1
+                      },
+                      "INCOMPLETE": {
+                        "color": "orange",
+                        "index": 2
+                      }
+                    }
+                  }
+                ]
+              },
+              {
+                "id": "custom.cellOptions",
+                "value": {
+                  "type": "color-background",
+                  "mode": "basic"
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Started"
+            },
+            "properties": [
+              {
+                "id": "custom.width",
+                "value": 170
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Trail status"
+            },
+            "properties": [
+              {
+                "id": "custom.width",
+                "value": 140
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "id": 6,
+      "type": "table",
+      "title": "ai-app-prod event log",
+      "description": "What changed in production, snapshot by snapshot, and the verdict after each change.",
+      "datasource": {
+        "type": "yesoreyeram-infinity-datasource",
+        "uid": "${kosli}"
+      },
+      "gridPos": {
+        "x": 0,
+        "y": 21,
+        "w": 24,
+        "h": 9
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "yesoreyeram-infinity-datasource",
+            "uid": "${kosli}"
+          },
+          "type": "json",
+          "source": "url",
+          "format": "table",
+          "parser": "backend",
+          "url": "https://app.kosli.com/api/v2/environments/SDL-Sandbox/ai-app-prod/events?per_page=30",
+          "url_options": {
+            "method": "GET"
+          },
+          "root_selector": "",
+          "columns": [
+            {
+              "selector": "reported_at",
+              "text": "Reported",
+              "type": "timestamp_epoch_s"
+            },
+            {
+              "selector": "snapshot_index",
+              "text": "Snapshot",
+              "type": "number"
+            },
+            {
+              "selector": "artifact_name",
+              "text": "Artifact",
+              "type": "string"
+            },
+            {
+              "selector": "description",
+              "text": "Event",
+              "type": "string"
+            },
+            {
+              "selector": "artifact_compliance",
+              "text": "Artifact compliance",
+              "type": "boolean"
+            },
+            {
+              "selector": "snapshot_compliance",
+              "text": "Environment",
+              "type": "boolean"
+            }
+          ]
+        }
+      ],
+      "options": {
+        "showHeader": true,
+        "cellHeight": "sm"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "custom": {
+            "align": "auto",
+            "filterable": true
+          }
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Environment"
+            },
+            "properties": [
+              {
+                "id": "mappings",
+                "value": [
+                  {
+                    "type": "value",
+                    "options": {
+                      "true": {
+                        "text": "Compliant",
+                        "color": "green",
+                        "index": 0
+                      },
+                      "false": {
+                        "text": "Non-compliant",
+                        "color": "red",
+                        "index": 1
+                      }
+                    }
+                  },
+                  {
+                    "type": "special",
+                    "options": {
+                      "match": "null",
+                      "result": {
+                        "text": "N/A (no policy)",
+                        "color": "text",
+                        "index": 2
+                      }
+                    }
+                  }
+                ]
+              },
+              {
+                "id": "custom.cellOptions",
+                "value": {
+                  "type": "color-background",
+                  "mode": "basic"
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Artifact"
+            },
+            "properties": []
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Reported"
+            },
+            "properties": [
+              {
+                "id": "custom.width",
+                "value": 170
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Snapshot"
+            },
+            "properties": [
+              {
+                "id": "custom.width",
+                "value": 90
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Artifact compliance"
+            },
+            "properties": [
+              {
+                "id": "mappings",
+                "value": [
+                  {
+                    "type": "value",
+                    "options": {
+                      "true": {
+                        "text": "Compliant",
+                        "color": "green",
+                        "index": 0
+                      },
+                      "false": {
+                        "text": "Non-compliant",
+                        "color": "red",
+                        "index": 1
+                      }
+                    }
+                  },
+                  {
+                    "type": "special",
+                    "options": {
+                      "match": "null",
+                      "result": {
+                        "text": "N/A (no policy)",
+                        "color": "text",
+                        "index": 2
+                      }
+                    }
+                  }
+                ]
+              },
+              {
+                "id": "custom.cellOptions",
+                "value": {
+                  "type": "color-background",
+                  "mode": "basic"
+                }
+              }
+            ]
+          }
+        ]
+      }
+    }
+  ]
+}

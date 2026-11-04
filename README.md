@@ -111,6 +111,20 @@ Require a pull request, 1 approval, and the Harness PR check to pass. Without it
 push to main still deploys; Kosli then records it as non-compliant (RCTL-043), but does not
 stop it.
 
+## Grafana (SCRUM-7)
+
+Dashboard **ai-app: Kosli compliance** in Grafana Cloud `digitalq`
+(https://digitalq.grafana.net/d/ai-app-kosli-compliance): compliance of `ai-app-prod` and
+`simple-app-prod`, the version running, all environments, the `ai-app` trails and the
+`ai-app-prod` event log, read live from the Kosli API through the Infinity data source
+`Kosli SDL-Sandbox` (bearer token kept in Grafana, allowed host `app.kosli.com`).
+
+The JSON in `grafana/dashboards/` is the source of truth; publish it with:
+
+```powershell
+.\grafana\publish-dashboards.ps1
+```
+
 ## Release
 
 Every PR must bump `VERSION` above the one on `main` (e.g. `0.1.1` -> `0.1.2`); the PR build's
