@@ -607,6 +607,6 @@ pipeline:
     # Atlassian account that owns secret account.jira_api_token.
     - name: jiraUsername
       type: String
-      value: "sonia.boussabeh@digital-innovation-partner.ch"
+      value: "boussabeh.sonia@gmail.com"
   identifier: ai_app
   name: ai-app
