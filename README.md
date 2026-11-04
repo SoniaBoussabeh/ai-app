@@ -111,6 +111,13 @@ Require a pull request, 1 approval, and the Harness PR check to pass. Without it
 push to main still deploys; Kosli then records it as non-compliant (RCTL-043), but does not
 stop it.
 
+## Vulnerability gate and exceptions (SCRUM-8)
+
+The pipeline fails on any HIGH or CRITICAL Trivy finding, before Deploy. To ship with a
+known finding, add it to `.trivyignore.yaml` with a reason (owner, ticket) and an
+`expired_at` date, through a pull request: the PR approver accepts the risk, and the file
+is attached to the Kosli `vulnerability-scan` attestation. Expired entries stop applying.
+
 ## Grafana (SCRUM-7)
 
 Dashboard **ai-app: Kosli compliance** in Grafana Cloud `digitalq`
