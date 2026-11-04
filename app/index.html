@@ -1,0 +1,45 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>AI App</title>
+  <link rel="stylesheet" href="/styles.css" />
+</head>
+<body>
+  <main class="card">
+    <!-- CHANGE ME: headline -->
+    <h1>Hello from AI App 👋</h1>
+
+    <!-- CHANGE ME: body text -->
+    <p>
+      This page is served by nginx from a container running in Kubernetes,
+      in the <code>ai-app</code> namespace.
+    </p>
+
+    <!-- CHANGE ME: add/remove items here across commits -->
+    <h2>What's new</h2>
+    <ul id="notes">
+      <li>Initial release.</li>
+    </ul>
+
+    <p class="version">
+      Version: <span id="version">loading…</span>
+    </p>
+
+    <!-- CHANGE ME: page navigation -->
+    <nav class="pager">
+      <span class="pager-spacer"></span>
+      <a class="pager-next" href="/page2.html">Next →</a>
+      <a class="pager-next" href="/status.html">Status dashboard →</a>
+    </nav>
+  </main>
+
+  <script>
+    fetch('/version')
+      .then(function (r) { return r.text(); })
+      .then(function (v) { document.getElementById('version').textContent = v.trim(); })
+      .catch(function () { document.getElementById('version').textContent = 'unknown'; });
+  </script>
+</body>
+</html>

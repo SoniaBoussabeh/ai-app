@@ -1,0 +1,130 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>AI App — Status Dashboard</title>
+  <link rel="stylesheet" href="/styles.css" />
+</head>
+<body>
+  <main class="card">
+    <h1>Status dashboard 📊</h1>
+    <p>
+      Live health of this instance, polled directly from the
+      <code>/healthz</code> and <code>/version</code> endpoints.
+    </p>
+
+    <div class="status-row">
+      <span class="status-dot" id="dot"></span>
+      <span class="status-label" id="state">Checking…</span>
+    </div>
+
+    <dl class="metrics">
+      <div>
+        <dt>Version</dt>
+        <dd id="m-version">—</dd>
+      </div>
+      <div>
+        <dt>Latency</dt>
+        <dd id="m-latency">—</dd>
+      </div>
+      <div>
+        <dt>Checks OK</dt>
+        <dd id="m-ok">0 / 0</dd>
+      </div>
+      <div>
+        <dt>Watching for</dt>
+        <dd id="m-uptime">0s</dd>
+      </div>
+      <div>
+        <dt>Last checked</dt>
+        <dd id="m-last">—</dd>
+      </div>
+    </dl>
+
+    <div class="controls">
+      <button id="refresh" type="button">Check now</button>
+      <label class="toggle">
+        <input type="checkbox" id="auto" checked />
+        Auto-refresh (5s)
+      </label>
+    </div>
+
+    <nav class="pager">
+      <a class="pager-prev" href="/index.html">← Home</a>
+      <span class="pager-spacer"></span>
+    </nav>
+  </main>
+
+  <script>
+    var startedAt = Date.now();
+    var total = 0;
+    var okCount = 0;
+    var timer = null;
+
+    function fmtAgo(ms) {
+      var s = Math.round(ms / 1000);
+      if (s < 60) { return s + 's'; }
+      var m = Math.floor(s / 60);
+      return m + 'm ' + (s % 60) + 's';
+    }
+
+    function setState(healthy) {
+      var dot = document.getElementById('dot');
+      var state = document.getElementById('state');
+      dot.className = 'status-dot ' + (healthy ? 'is-up' : 'is-down');
+      state.textContent = healthy ? 'Healthy' : 'Unreachable';
+      state.className = 'status-label ' + (healthy ? 'is-up' : 'is-down');
+    }
+
+    function check() {
+      var t0 = Date.now();
+      total += 1;
+
+      var health = fetch('/healthz', { cache: 'no-store' }).then(function (r) {
+        if (!r.ok) { throw new Error('status ' + r.status); }
+        return r.text();
+      });
+
+      var version = fetch('/version', { cache: 'no-store' })
+        .then(function (r) { return r.text(); })
+        .catch(function () { return 'unknown'; });
+
+      Promise.all([health, version]).then(function (results) {
+        var latency = Date.now() - t0;
+        okCount += 1;
+        setState(true);
+        document.getElementById('m-version').textContent = results[1].trim() || 'unknown';
+        document.getElementById('m-latency').textContent = latency + ' ms';
+      }).catch(function () {
+        setState(false);
+        document.getElementById('m-latency').textContent = '—';
+      }).finally(function () {
+        document.getElementById('m-ok').textContent = okCount + ' / ' + total;
+        document.getElementById('m-last').textContent = new Date().toLocaleTimeString();
+      });
+    }
+
+    function tickUptime() {
+      document.getElementById('m-uptime').textContent = fmtAgo(Date.now() - startedAt);
+    }
+
+    function startAuto() {
+      if (timer) { return; }
+      timer = setInterval(check, 5000);
+    }
+    function stopAuto() {
+      if (timer) { clearInterval(timer); timer = null; }
+    }
+
+    document.getElementById('refresh').addEventListener('click', check);
+    document.getElementById('auto').addEventListener('change', function (e) {
+      if (e.target.checked) { startAuto(); } else { stopAuto(); }
+    });
+
+    check();
+    startAuto();
+    setInterval(tickUptime, 1000);
+  </script>
+</body>
+</html>

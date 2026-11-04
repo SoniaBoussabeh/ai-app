@@ -1,0 +1,18 @@
+version: 1
+trail:
+  attestations:
+    - name: pull-request
+      type: pull_request
+    # Decision recorded against Kosli control RCTL-043-test ("Source code review").
+    # `--name` on `kosli attest decision` must match this entry exactly.
+    - name: source-code-review-decision
+      type: decision
+    # Smoke tests run against the pushed image in the Harness Test stage.
+    # `--name` on `kosli attest junit` must match this entry exactly.
+    - name: smoke-tests
+      type: junit
+  artifacts:
+    # Required. `kosli attest artifact --name ai-app` is a REFERENCE to this
+    # entry — remove it and the digest is never bound to the trail.
+    - name: ai-app
+      attestations: []

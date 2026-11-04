@@ -1,0 +1,44 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>AI App — Page 2</title>
+  <link rel="stylesheet" href="/styles.css" />
+</head>
+<body>
+  <main class="card">
+    <!-- CHANGE ME: headline -->
+    <h1>Page 2 📄</h1>
+
+    <!-- CHANGE ME: body text -->
+    <p>
+      This is the second page. Use the navigation below to move
+      between pages.
+    </p>
+
+    <!-- CHANGE ME: add/remove items here across commits -->
+    <h2>Details</h2>
+    <ul id="notes">
+      <li>A brand new page with next/previous navigation.</li>
+    </ul>
+
+    <p class="version">
+      Version: <span id="version">loading…</span>
+    </p>
+
+    <!-- CHANGE ME: page navigation -->
+    <nav class="pager">
+      <a class="pager-prev" href="/index.html">← Previous</a>
+      <span class="pager-spacer"></span>
+    </nav>
+  </main>
+
+  <script>
+    fetch('/version')
+      .then(function (r) { return r.text(); })
+      .then(function (v) { document.getElementById('version').textContent = v.trim(); })
+      .catch(function () { document.getElementById('version').textContent = 'unknown'; });
+  </script>
+</body>
+</html>

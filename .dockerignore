@@ -1,0 +1,8 @@
+k8s/
+.git/
+.gitignore
+.harness/
+.mcp.json
+CLAUDE.md
+README.md
+kosli/

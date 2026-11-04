@@ -1,0 +1,37 @@
+service:
+  name: ai-app
+  identifier: aiapp
+  orgIdentifier: default
+  projectIdentifier: foodtrucksre
+  serviceDefinition:
+    type: Kubernetes
+    spec:
+      manifests:
+        - manifest:
+            identifier: k8s
+            type: K8sManifest
+            spec:
+              store:
+                type: Github
+                spec:
+                  connectorRef: account.githubsonia
+                  gitFetchType: Branch
+                  repoName: ai-app
+                  branch: main
+                  paths:
+                    - k8s/namespace.yaml
+                    - k8s/deployment.yaml
+                    - k8s/service.yaml
+              valuesPaths:
+                - k8s/values.yaml
+              skipResourceVersioning: false
+      artifacts:
+        primary:
+          primaryArtifactRef: dockerimage
+          sources:
+            - identifier: dockerimage
+              type: DockerRegistry
+              spec:
+                connectorRef: account.dockerio
+                imagePath: soniabou/ai-app
+                tag: <+input>
