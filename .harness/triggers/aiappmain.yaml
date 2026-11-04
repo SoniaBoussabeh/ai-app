@@ -1,0 +1,35 @@
+trigger:
+  name: ai-app-main
+  identifier: aiappmain
+  enabled: true
+  description: "Push to main: build + test + deploy (isRelease=true)"
+  orgIdentifier: default
+  projectIdentifier: foodtrucksre
+  pipelineIdentifier: aiapp
+  pipelineBranchName: main
+  source:
+    type: Webhook
+    spec:
+      type: Github
+      spec:
+        type: Push
+        spec:
+          connectorRef: account.githubsonia
+          repoName: ai-app
+          autoAbortPreviousExecutions: false
+          payloadConditions:
+            - key: targetBranch
+              operator: Equals
+              value: main
+          headerConditions: []
+          actions: []
+  inputYaml: |
+    pipeline:
+      identifier: aiapp
+      variables:
+        - name: gitBranch
+          type: String
+          value: main
+        - name: isRelease
+          type: String
+          value: "true"

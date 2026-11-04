@@ -1,0 +1,40 @@
+trigger:
+  name: ai-app-pr
+  identifier: aiapppr
+  enabled: true
+  description: "PR to main: build + test only (isRelease=false)"
+  orgIdentifier: default
+  projectIdentifier: foodtrucksre
+  pipelineIdentifier: aiapp
+  # Always run the reviewed pipeline from main, so a PR cannot change its own checks.
+  pipelineBranchName: main
+  source:
+    type: Webhook
+    spec:
+      type: Github
+      spec:
+        type: PullRequest
+        spec:
+          connectorRef: account.githubsonia
+          repoName: ai-app
+          autoAbortPreviousExecutions: true
+          payloadConditions:
+            - key: targetBranch
+              operator: Equals
+              value: main
+          headerConditions: []
+          actions:
+            - Open
+            - Reopen
+            - Edit
+            - Synchronize
+  inputYaml: |
+    pipeline:
+      identifier: aiapp
+      variables:
+        - name: gitBranch
+          type: String
+          value: <+trigger.sourceBranch>
+        - name: isRelease
+          type: String
+          value: "false"
