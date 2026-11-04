@@ -305,6 +305,44 @@ pipeline:
                         --repo-id "<+pipeline.variables.githubRepoId>" \
                         --origin-url "<+pipeline.executionUrl>"
 
+              # <-- KOSLI: the commit must reference an existing Jira issue in
+              # project SCRUM (e.g. "SCRUM-12: add status page"). Kosli reads the
+              # key from the commit message; the clone is branch main, so the
+              # branch name never carries one.
+              # Reports only. Add --assert to FAIL the build when no valid issue
+              # is referenced.
+              - step:
+                  type: Run
+                  name: Kosli Attest Jira
+                  identifier: Kosli_Attest_Jira
+                  spec:
+                    connectorRef: account.dockerio
+                    image: alpine:latest
+                    shell: Sh
+                    envVariables:
+                      KOSLI_API_TOKEN: <+secrets.getValue("account.kosli_api_token")>
+                      KOSLI_ORG: SDL-Sandbox
+                      KOSLI_FLOW: ai-app
+                      JIRA_API_TOKEN: <+secrets.getValue("account.jira_api_token")>
+                    command: |-
+                      set -eu
+                      SHA=<+execution.steps.Kosli_Setup.output.outputVariables.COMMIT_SHA>
+                      /harness/bin/kosli attest jira \
+                        --name jira-ticket \
+                        --jira-base-url "<+pipeline.variables.jiraBaseUrl>" \
+                        --jira-username "<+pipeline.variables.jiraUsername>" \
+                        --jira-api-token "$JIRA_API_TOKEN" \
+                        --jira-project-key SCRUM \
+                        --ignore-branch-match \
+                        --trail "$SHA" \
+                        --commit "$SHA" \
+                        --repo-root /harness/test \
+                        --repo-provider github \
+                        --repository "SoniaBoussabeh/ai-app" \
+                        --repo-url "https://github.com/SoniaBoussabeh/ai-app" \
+                        --repo-id "<+pipeline.variables.githubRepoId>" \
+                        --origin-url "<+pipeline.executionUrl>"
+
           infrastructure:
             type: KubernetesDirect
             spec:
@@ -533,6 +571,13 @@ pipeline:
   variables:
     - name: githubRepoId
       type: String
-      value: "REPLACE_WITH_GITHUB_REPO_ID"
+      value: "1445561751"
+    - name: jiraBaseUrl
+      type: String
+      value: "https://dhw-app.atlassian.net"
+    # Atlassian account that owns secret account.jira_api_token.
+    - name: jiraUsername
+      type: String
+      value: "sonia.boussabeh@digital-innovation-partner.ch"
   identifier: ai_app
   name: ai-app

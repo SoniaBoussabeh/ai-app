@@ -26,8 +26,7 @@ All commands are PowerShell, run from `C:\Users\lenovo\Desktop\App-test`.
 
 ```powershell
 gh auth login
-gh repo create SoniaBoussabeh/ai-app --private --source . --push
-gh api repos/SoniaBoussabeh/ai-app --jq .id      # -> put in githubRepoId (step 3)
+gh repo create SoniaBoussabeh/ai-app --private --source . --push   # done: repo id 1445561751
 ```
 
 The `account.githubsonia` connector and `account.github_token` secret must be able to read
@@ -73,12 +72,20 @@ Import in this order. Each uses connector `account.githubsonia`, repo `ai-app`, 
 1. **Service:** Services → New Service → Import from Git → `.harness/service-ai-app.yaml`
 2. **Infrastructure:** Environments → `prod_Env` → Infrastructure Definitions → Import from Git → `.harness/infra-ai-app.yaml`
 3. **Pipeline:** Pipelines → Create → Import from Git → `.harness/ai-app-pipeline.yaml`
-4. Set `githubRepoId` in `.harness/ai-app-pipeline.yaml` to the id from step 1, commit and push.
+4. **Jira secret:** create an Atlassian API token for the user in pipeline variable `jiraUsername`
+   (https://id.atlassian.com/manage-profile/security/api-tokens) and store it as account-level
+   secret `account.jira_api_token` (Project/Account Settings → Secrets → New Secret → Text).
 5. **Trigger:** Pipeline → Triggers → New Trigger → GitHub → event **Push**, branch `main`.
    Harness registers the webhook if the connector's token has `admin:repo_hook`; otherwise add
    the webhook URL Harness shows in GitHub → Settings → Webhooks.
 
 From then on: change code or pipeline → commit → push. Nothing is pasted into Harness.
+
+## Jira link (Kosli `jira-ticket` attestation)
+
+Every commit on main should mention an issue of project **SCRUM** on
+https://dhw-app.atlassian.net, e.g. `SCRUM-12: add status page`. The pipeline's Kosli Attest
+Jira step records whether it does; add `--assert` there to make it block the build.
 
 ## Release
 

@@ -11,6 +11,10 @@ trail:
     # `--name` on `kosli attest junit` must match this entry exactly.
     - name: smoke-tests
       type: junit
+    # Commit references an existing Jira issue in project SCRUM.
+    # `--name` on `kosli attest jira` must match this entry exactly.
+    - name: jira-ticket
+      type: jira
   artifacts:
     # Required. `kosli attest artifact --name ai-app` is a REFERENCE to this
     # entry — remove it and the digest is never bound to the trail.

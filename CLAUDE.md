@@ -10,7 +10,8 @@ Version lives in `VERSION` (bump it for every release; it becomes the image tag)
   - The cluster reporter (`kosli-reporter-k8s-reporter` CronJob, every 5 min) pushes snapshots; Harness attests builds.
 - **Harness** (`harness` server, read-only): pipeline `ai_app` in project `foodtrucksre`, stored in this repo at `.harness/ai-app-pipeline.yaml`. Use it to trace a Kosli artifact back to the pipeline execution that produced it.
 - **Grafana** (`grafana` server, read-only): dashboards, metrics/logs queries, alerts. Use it to check runtime health around a deployment.
-- **Jira** (`atlassian` server): OAuth via `/mcp`.
+- **Jira** (`atlassian` server): site https://dhw-app.atlassian.net, project `SCRUM`. OAuth via `/mcp`.
+  Commit messages start with the issue key (`SCRUM-12: ...`); Kosli attests this as `jira-ticket`.
 
 ## Rules
 
