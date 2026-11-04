@@ -52,20 +52,12 @@ One policy per concern, each attached to `ai-app-prod` (files in `kosli/policies
 
 The flow `ai-app` is created by the pipeline itself (`kosli create flow` in Kosli Begin Trail).
 
-Then add the environment to the cluster reporter. In simpleapp's `kosli/reporter-values.yaml`
-under `reporterConfig.environments`, add:
-
-```yaml
-    - name: "ai-app-prod"
-      namespaces: [ai-app]
-```
-
-and run:
+The cluster reporter config lives in [kosli/reporter-values.yaml](kosli/reporter-values.yaml)
+(all environments of the cluster, `ai-app-prod` included). After changing it:
 
 ```powershell
-cd C:\Users\lenovo\Downloads\appDHWGovernance\simpleapp
-helm upgrade --install kosli-reporter kosli/k8s-reporter -f kosli/reporter-values.yaml
-cd C:\Users\lenovo\Desktop\App-test
+helm repo update kosli
+helm upgrade --install kosli-reporter kosli/k8s-reporter --version 2.6.0 -n default -f kosli/reporter-values.yaml
 ```
 
 ### 3. Harness (import from Git, in project `foodtrucksre`)

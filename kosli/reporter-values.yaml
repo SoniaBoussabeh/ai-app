@@ -1,0 +1,59 @@
+# Helm values for the Kosli k8s-reporter.
+#   helm repo update kosli
+#   helm upgrade --install kosli-reporter kosli/k8s-reporter --version 2.6.0 -n default -f kosli/reporter-values.yaml
+#
+# ONE reporter serves the whole cluster, so this file lists EVERY environment, not only
+# ai-app. This copy is the source of truth since 2026-11-04 (it is what is deployed).
+# simpleapp/kosli/reporter-values.yaml is older and lacks ai-app-prod: running helm
+# with it would silently stop reporting ai-app-prod.
+#
+# Keep this file in the repo rather than in a shell working directory, so the
+# cluster's reporting scope is reviewable and reproducible.
+
+# the cron schedule at which the reporter is triggered
+cronSchedule: "*/5 * * * *"
+
+# The chart does NOT label its Job pods by default, which is why
+#   kubectl logs -l app.kubernetes.io/name=k8s-reporter
+# always returns "No resources found". Setting podLabels fixes that:
+#   kubectl logs -l app=kosli-reporter -n default --tail=50
+podLabels:
+  app: kosli-reporter
+
+kosliApiToken:
+  # the name of the secret containing the Kosli API token
+  # created out-of-band: kubectl create secret generic kosli-api-token --from-literal=apikey=...
+  secretName: "kosli-api-token"
+  # the key in the secret data that contains the token
+  secretKey: "apikey"
+
+reporterConfig:
+  # the name of the Kosli org
+  kosliOrg: "SDL-Sandbox"
+
+  # Each environment listed here MUST already exist in Kosli, otherwise the
+  # CronJob exits 1 with "Environment named '<x>' does not exist".
+  # Create with: kosli create environment <name> --type K8S
+  #
+  # Alternatively `autoEnvironment: true` makes the reporter create any missing
+  # environment itself (Snapshotter role is sufficient) — that would have avoided
+  # the original setup failure entirely. Left off deliberately: with it on, a typo
+  # in an environment name silently creates a new environment instead of failing
+  # loudly, which is worse for a small fixed set of environments like this one.
+  # autoEnvironment: true
+
+  # NOTE on scoping: the reporter filters by NAMESPACE ONLY — namespaces,
+  # namespacesRegex, excludeNamespaces, excludeNamespacesRegex. There is no
+  # pod-level label selector, so anything sharing a namespace with the app gets
+  # reported as a running artifact. Keep CI/build workloads in their own namespace.
+  environments:
+    # whole-cluster inventory: no `namespaces` key means every namespace
+    - name: "k8s-tutorial"
+
+    # scoped to this app, so its compliance view isn't diluted by kube-system etc.
+    - name: "simple-app-prod"
+      namespaces: [simple-app]
+
+    # ai-app (repo SoniaBoussabeh/ai-app), deployed by Harness pipeline aiapp
+    - name: "ai-app-prod"
+      namespaces: [ai-app]
