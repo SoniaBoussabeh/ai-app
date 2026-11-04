@@ -163,7 +163,11 @@ pipeline:
                         --commit "$SHA" \
                         --commit-url "https://github.com/SoniaBoussabeh/ai-app/commit/${SHA}" \
                         --build-url "<+pipeline.executionUrl>" \
-                        --repo-root /harness/test
+                        --repo-root /harness/test \
+                        --repo-provider github \
+                        --repository "SoniaBoussabeh/ai-app" \
+                        --repo-url "https://github.com/SoniaBoussabeh/ai-app" \
+                        --repo-id "<+pipeline.variables.githubRepoId>"
 
               # <-- KOSLI: the only step that calls the GitHub API. Satisfies the
               # `pull-request` attestation in flow-template.yml.
