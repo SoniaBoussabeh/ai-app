@@ -46,8 +46,8 @@ One policy per concern, each attached to `ai-app-prod` (files in `kosli/policies
 | `ai-app-trail-compliance` | everything in `kosli/flow-template.yml` | — |
 
 ```powershell
-.koslipply-policies.ps1        # phase 1: creates ai-app-prod + provenance policy
-.koslipply-policies.ps1 -All   # after the first PR-based release is green
+.\kosli\apply-policies.ps1        # phase 1: creates ai-app-prod + provenance policy
+.\kosli\apply-policies.ps1 -All   # after the first PR-based release is green
 ```
 
 The flow `ai-app` is created by the pipeline itself (`kosli create flow` in Kosli Begin Trail).
