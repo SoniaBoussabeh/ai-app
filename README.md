@@ -20,9 +20,11 @@ GitHub (push to main) ──webhook──► Harness pipeline ai_app (YAML read 
 
 ## One-time setup
 
+All commands are PowerShell, run from `C:\Users\lenovo\Desktop\App-test`.
+
 ### 1. GitHub
 
-```shell
+```powershell
 gh auth login
 gh repo create SoniaBoussabeh/ai-app --private --source . --push
 gh api repos/SoniaBoussabeh/ai-app --jq .id      # -> put in githubRepoId (step 3)
@@ -33,10 +35,17 @@ this new repo (check the token's repository access if it is a fine-grained token
 
 ### 2. Kosli
 
-```shell
-kosli create environment ai-app-prod --type K8S --description "ai-app production namespace" --org SDL-Sandbox
-kosli create policy ai-app-policy kosli/policy-ai-app.yaml --description "ai-app runtime requirements" --type env --org SDL-Sandbox
-kosli attach-policy ai-app-policy --environment ai-app-prod --org SDL-Sandbox
+No local CLI needed: run it in Docker with the Member token (same pattern as simpleapp's
+KOSLI-SETUP.md §3). `--tmpfs /tmp` is mandatory, the image has no `/tmp`.
+
+```powershell
+$env:KOSLI_ORG = "SDL-Sandbox"
+$env:KOSLI_API_TOKEN = (Get-Content "$env:USERPROFILE\.kosli-member-token" -Raw).Trim()
+function kosli { docker run --rm --tmpfs /tmp -e KOSLI_API_TOKEN -e KOSLI_ORG -v "${PWD}:/src" -w /src ghcr.io/kosli-dev/cli:v2.34.0 @args }
+
+kosli create environment ai-app-prod --type K8S --description "ai-app production namespace"
+kosli create policy ai-app-policy kosli/policy-ai-app.yaml --description "ai-app runtime requirements" --type env
+kosli attach-policy ai-app-policy --environment ai-app-prod
 ```
 
 The flow `ai-app` is created by the pipeline itself (`kosli create flow` in Kosli Begin Trail).
@@ -49,7 +58,13 @@ under `reporterConfig.environments`, add:
       namespaces: [ai-app]
 ```
 
-and run `helm upgrade --install kosli-reporter kosli/k8s-reporter -f kosli/reporter-values.yaml`.
+and run:
+
+```powershell
+cd C:\Users\lenovo\Downloads\appDHWGovernance\simpleapp
+helm upgrade --install kosli-reporter kosli/k8s-reporter -f kosli/reporter-values.yaml
+cd C:\Users\lenovo\Desktop\App-test
+```
 
 ### 3. Harness (import from Git, in project `foodtrucksre`)
 
