@@ -1,5 +1,5 @@
 # Unprivileged nginx: runs as non-root and listens on 8080 by default
-FROM nginxinc/nginx-unprivileged:1.27-alpine
+FROM nginxinc/nginx-unprivileged:1.30.6-alpine
 
 # Static content + nginx config
 COPY app/ /usr/share/nginx/html/
@@ -9,6 +9,9 @@ COPY nginx/default.conf /etc/nginx/conf.d/default.conf
 # and bake it into the file served at /version (trim any surrounding whitespace).
 COPY VERSION /tmp/VERSION
 USER root
+# Pull Alpine security fixes released after the base image was built; the Trivy
+# gate in the pipeline fails the build on any HIGH or CRITICAL finding.
+RUN apk upgrade --no-cache
 RUN tr -d ' \t\r\n' < /tmp/VERSION > /usr/share/nginx/html/version.txt && rm /tmp/VERSION
 USER nginx
 
