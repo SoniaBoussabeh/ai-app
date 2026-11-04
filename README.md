@@ -113,4 +113,7 @@ stop it.
 
 ## Release
 
-Bump `VERSION`, commit, push. The pipeline tags the image with that version.
+Every PR must bump `VERSION` above the one on `main` (e.g. `0.1.1` -> `0.1.2`); the PR build's
+**Check Version Bump** step fails otherwise. The merged version becomes the image tag.
+
+Jira: https://dhw-app.atlassian.net/jira/software/projects/SCRUM/boards/
