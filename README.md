@@ -139,7 +139,7 @@ Kosli verdict every 5 minutes and emails contact point `ai-app-compliance` when 
 turns non-compliant, and again when it recovers. Every release writes a Grafana annotation
 (version, SCRUM key, commit, Harness run, Kosli trail) shown on the dashboard timeline.
 Publish with `.\grafana\publish-alerting.ps1`. The pipeline step needs Harness secret
-`grafana_token`.
+`grafana-token`.
 
 ## Release
 

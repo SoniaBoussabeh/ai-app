@@ -868,7 +868,7 @@ pipeline:
                     image: alpine:latest
                     shell: Sh
                     envVariables:
-                      GRAFANA_TOKEN: <+secrets.getValue("account.grafana_token")>
+                      GRAFANA_TOKEN: <+secrets.getValue("account.grafana-token")>
                     command: |-
                       apk add --no-cache curl jq git >/dev/null
                       git config --global --add safe.directory '*'
