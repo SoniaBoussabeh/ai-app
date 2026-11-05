@@ -852,6 +852,38 @@ pipeline:
                       IMAGE="docker.io/soniabou/ai-app:<+pipeline.stages.Build.spec.execution.steps.Read_Version.output.outputVariables.IMAGE_TAG>"
                       kosli assert artifact "$IMAGE" --artifact-type oci --flow ai-app --environment ai-app-prod
 
+              # Grafana deploy annotation (SCRUM-10, CM-11): marks the release on the
+              # dashboard timeline, so a compliance drop or an incident right after it
+              # points at this change. Written once the release has passed every gate;
+              # a Grafana outage only warns, it never blocks the deploy.
+              - step:
+                  type: Run
+                  name: Grafana Deploy Annotation
+                  identifier: Grafana_Deploy_Annotation
+                  when:
+                    stageStatus: Success
+                    condition: <+pipeline.variables.isRelease> == "true"
+                  spec:
+                    connectorRef: account.dockerio
+                    image: alpine:latest
+                    shell: Sh
+                    envVariables:
+                      GRAFANA_TOKEN: <+secrets.getValue("account.grafana_token")>
+                    command: |-
+                      apk add --no-cache curl jq git >/dev/null
+                      git config --global --add safe.directory '*'
+                      SHA=<+pipeline.stages.Build.spec.execution.steps.Kosli_Setup.output.outputVariables.COMMIT_SHA>
+                      VER=<+pipeline.stages.Build.spec.execution.steps.Read_Version.output.outputVariables.IMAGE_TAG>
+                      MSG=$(git -C /harness/test log -1 --format=%s "$SHA" 2>/dev/null || echo "")
+                      KEY=$(echo "$MSG" | grep -oE 'SCRUM-[0-9]+' | head -1)
+                      SHORT=$(echo "$SHA" | cut -c1-7)
+                      TEXT="Deploy ai-app $VER (${KEY:-no ticket}) commit $SHORT<br>$MSG<br><a href=\"<+pipeline.executionUrl>\">Harness run</a> | <a href=\"https://app.kosli.com/SDL-Sandbox/flows/ai-app/trails/$SHA\">Kosli trail</a>"
+                      BODY=$(jq -n --arg text "$TEXT" --arg ver "$VER" --arg key "${KEY:-none}" \
+                        '{tags: ["ai-app", "deploy", ("version:" + $ver), ("ticket:" + $key)], text: $text}')
+                      curl -sSf -X POST "<+pipeline.variables.grafanaUrl>/api/annotations" \
+                        -H "Authorization: Bearer $GRAFANA_TOKEN" -H "Content-Type: application/json" -d "$BODY" \
+                        && echo "Grafana annotation written for $VER" || echo "WARN: Grafana annotation failed (deploy not affected)"
+
               - step:
                   type: Run
                   name: GitHub Status Success
@@ -975,7 +1007,10 @@ pipeline:
     # Pipeline Freshness Check compares it with main to detect a stale cache.
     - name: pipelineRevision
       type: String
-      value: "4"
+      value: "5"
+    - name: grafanaUrl
+      type: String
+      value: "https://digitalq.grafana.net"
     - name: githubRepoId
       type: String
       value: "1445561751"

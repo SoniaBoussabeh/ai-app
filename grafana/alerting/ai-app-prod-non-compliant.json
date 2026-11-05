@@ -1,0 +1,54 @@
+{
+  "uid": "ai-app-prod-non-compliant",
+  "title": "ai-app-prod non-compliant (Kosli)",
+  "ruleGroup": "ai-app-compliance",
+  "folderUID": "ai-app",
+  "condition": "C",
+  "for": "0s",
+  "noDataState": "Alerting",
+  "execErrState": "Alerting",
+  "data": [
+    {
+      "refId": "A",
+      "relativeTimeRange": { "from": 600, "to": 0 },
+      "datasourceUid": "ag3bpx5ltfg1sc",
+      "model": {
+        "refId": "A",
+        "datasource": { "type": "yesoreyeram-infinity-datasource", "uid": "ag3bpx5ltfg1sc" },
+        "type": "json",
+        "source": "url",
+        "format": "table",
+        "parser": "backend",
+        "url": "https://app.kosli.com/api/v2/environments/SDL-Sandbox/ai-app-prod",
+        "url_options": { "method": "GET" },
+        "root_selector": "state ? 1 : 0",
+        "columns": []
+      }
+    },
+    {
+      "refId": "B",
+      "relativeTimeRange": { "from": 600, "to": 0 },
+      "datasourceUid": "__expr__",
+      "model": { "refId": "B", "type": "reduce", "expression": "A", "reducer": "last", "datasource": { "type": "__expr__", "uid": "__expr__" } }
+    },
+    {
+      "refId": "C",
+      "relativeTimeRange": { "from": 600, "to": 0 },
+      "datasourceUid": "__expr__",
+      "model": {
+        "refId": "C", "type": "threshold", "expression": "B",
+        "conditions": [ { "evaluator": { "type": "lt", "params": [1] } } ],
+        "datasource": { "type": "__expr__", "uid": "__expr__" }
+      }
+    }
+  ],
+  "labels": { "app": "ai-app", "environment": "ai-app-prod", "source": "kosli", "severity": "high" },
+  "annotations": {
+    "summary": "ai-app-prod is non-compliant in Kosli: a version runs that does not meet the production policies.",
+    "description": "Open the Kosli environment to see which artifact and policy failed, then the trail of that commit for its PR, review, Jira ticket and test evidence. Record the cause and conclusion on the incident ticket (checklist CM-11).",
+    "kosli_environment": "https://app.kosli.com/SDL-Sandbox/environments/ai-app-prod/",
+    "dashboard": "https://digitalq.grafana.net/d/ai-app-kosli-compliance"
+  },
+  "notification_settings": { "receiver": "ai-app-compliance" },
+  "isPaused": false
+}

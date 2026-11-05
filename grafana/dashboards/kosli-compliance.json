@@ -724,6 +724,142 @@
           }
         ]
       }
+    },
+    {
+      "id": 7,
+      "type": "timeseries",
+      "title": "ai-app-prod compliance over time (1 = compliant, 0 = non-compliant), with deploys",
+      "datasource": {
+        "type": "yesoreyeram-infinity-datasource",
+        "uid": "${kosli}"
+      },
+      "description": "Kosli verdict after every snapshot. Blue markers: Harness releases (deploy annotations). A drop to 0 right after a marker links the incident to that change (CM-11).",
+      "gridPos": {
+        "x": 0,
+        "y": 30,
+        "w": 16,
+        "h": 8
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "yesoreyeram-infinity-datasource",
+            "uid": "${kosli}"
+          },
+          "type": "json",
+          "source": "url",
+          "format": "timeseries",
+          "parser": "backend",
+          "url": "https://app.kosli.com/api/v2/environments/SDL-Sandbox/ai-app-prod/events?per_page=100",
+          "url_options": {
+            "method": "GET"
+          },
+          "root_selector": "$map($, function($e){ { \"time\": $e.reported_at, \"compliant\": $e.snapshot_compliance ? 1 : 0 } })",
+          "columns": [
+            {
+              "selector": "time",
+              "text": "time",
+              "type": "timestamp_epoch_s"
+            },
+            {
+              "selector": "compliant",
+              "text": "compliant",
+              "type": "number"
+            }
+          ]
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "min": 0,
+          "max": 1,
+          "decimals": 0,
+          "custom": {
+            "drawStyle": "line",
+            "lineInterpolation": "stepAfter",
+            "lineWidth": 2,
+            "fillOpacity": 15,
+            "showPoints": "always",
+            "pointSize": 6
+          },
+          "color": {
+            "mode": "thresholds"
+          },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "red",
+                "value": null
+              },
+              {
+                "color": "green",
+                "value": 1
+              }
+            ]
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": {
+          "showLegend": false
+        },
+        "tooltip": {
+          "mode": "single"
+        }
+      }
+    },
+    {
+      "id": 8,
+      "type": "alertlist",
+      "title": "Compliance alerts",
+      "gridPos": {
+        "x": 16,
+        "y": 30,
+        "w": 8,
+        "h": 8
+      },
+      "options": {
+        "viewMode": "list",
+        "groupMode": "default",
+        "maxItems": 10,
+        "sortOrder": 1,
+        "dashboardAlerts": false,
+        "alertName": "",
+        "alertInstanceLabelFilter": "{app=\"ai-app\"}",
+        "stateFilter": {
+          "firing": true,
+          "pending": true,
+          "noData": true,
+          "normal": true,
+          "error": true
+        },
+        "folder": null
+      }
     }
-  ]
+  ],
+  "annotations": {
+    "list": [
+      {
+        "name": "ai-app deploys",
+        "enable": true,
+        "iconColor": "blue",
+        "datasource": {
+          "type": "grafana",
+          "uid": "-- Grafana --"
+        },
+        "target": {
+          "type": "tags",
+          "tags": [
+            "ai-app",
+            "deploy"
+          ],
+          "matchAny": false,
+          "limit": 100
+        }
+      }
+    ]
+  }
 }
