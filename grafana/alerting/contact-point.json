@@ -1,0 +1,10 @@
+{
+  "uid": "ai-app-compliance",
+  "name": "ai-app-compliance",
+  "type": "email",
+  "settings": {
+    "addresses": "sonia.boussabeh@digital-innovation-partner.ch",
+    "singleEmail": true
+  },
+  "disableResolveMessage": false
+}

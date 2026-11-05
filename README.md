@@ -132,6 +132,15 @@ The JSON in `grafana/dashboards/` is the source of truth; publish it with:
 .\grafana\publish-dashboards.ps1
 ```
 
+## Compliance alert and deploy annotations (SCRUM-10)
+
+Grafana alert rule **ai-app-prod non-compliant (Kosli)** (`grafana/alerting/`) evaluates the
+Kosli verdict every 5 minutes and emails contact point `ai-app-compliance` when production
+turns non-compliant, and again when it recovers. Every release writes a Grafana annotation
+(version, SCRUM key, commit, Harness run, Kosli trail) shown on the dashboard timeline.
+Publish with `.\grafana\publish-alerting.ps1`. The pipeline step needs Harness secret
+`grafana-token`.
+
 ## Release
 
 Every PR must bump `VERSION` above the one on `main` (e.g. `0.1.1` -> `0.1.2`); the PR build's
